@@ -17,6 +17,32 @@
             --danger: #c62828;
             --warning: #ed6c02;
             --soft: #eef2f7;
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+            --google-bg: #ffffff;
+            --google-hover: #f9fafb;
+            --google-text: #111827;
+            --google-border: #d1d5db;
+        }
+
+        body.dark-mode {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --soft: #0f172a;
+            --input-bg: #0f172a;
+            --input-border: #475569;
+            --google-bg: #0f172a;
+            --google-hover: #1e293b;
+            --google-text: #f8fafc;
+            --google-border: #475569;
         }
 
         * {
@@ -70,9 +96,9 @@
             width: 100%;
             padding: 12px 16px;
             border-radius: 10px;
-            border: 1px solid #d1d5db;
-            background: #ffffff;
-            color: #111827;
+            border: 1px solid var(--google-border);
+            background: var(--google-bg);
+            color: var(--google-text);
             font-weight: 600;
             font-size: 15px;
             cursor: pointer;
@@ -83,7 +109,7 @@
         }
 
             .btn-google:hover {
-                background: #f9fafb;
+                background: var(--google-hover);
             }
 
         .status-msg {
@@ -208,8 +234,8 @@
         .search-input, .input, .select {
             padding: 9px 12px;
             border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            background: #fff;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
             color: var(--text);
             font-size: 14px;
         }
@@ -412,6 +438,7 @@
 
             <div class="user-actions">
                 <span id="lblUsuarioEmail" class="card-meta"></span>
+                <button id="btnModoOscuro" class="btn btn-secondary" type="button" onclick="toggleModoOscuro()">Modo oscuro</button>
                 <button class="btn btn-secondary" type="button" onclick="sincronizarManual()">Sincronizar</button>
                 <button class="btn btn-secondary" type="button" onclick="cerrarSesion()">Salir</button>
             </div>
@@ -647,6 +674,7 @@
             let seccionActual = "Compras";
             let periodoActual = "Dia";
             let subTabCorte = "Facturas";
+            let modoOscuroActivo = false;
 
             // Estado modales
             let idRestockActual = null;
@@ -659,6 +687,38 @@
             let unidadFormSeleccionada = "Unidad";
 
             let idMermaActual = null;
+
+            function obtenerClaveTemaUsuario() {
+              return "viko_pos_dark_mode_" + (userKeyActual || "guest");
+            }
+
+            function aplicarEstadoModoOscuro(activo) {
+              modoOscuroActivo = Boolean(activo);
+              document.body.classList.toggle("dark-mode", modoOscuroActivo);
+              const btn = document.getElementById("btnModoOscuro");
+              if (btn) {
+                btn.textContent = modoOscuroActivo ? "Modo claro" : "Modo oscuro";
+              }
+            }
+
+            function cargarModoOscuroUsuario() {
+              try {
+                const guardado = localStorage.getItem(obtenerClaveTemaUsuario());
+                aplicarEstadoModoOscuro(guardado === "1");
+              } catch (e) {
+                aplicarEstadoModoOscuro(false);
+              }
+            }
+
+            window.toggleModoOscuro = function () {
+              const siguiente = !modoOscuroActivo;
+              aplicarEstadoModoOscuro(siguiente);
+              try {
+                localStorage.setItem(obtenerClaveTemaUsuario(), siguiente ? "1" : "0");
+              } catch (e) {}
+            };
+
+            cargarModoOscuroUsuario();
 
             function sanitizarClaveFirebase(email) {
               return email.trim().toLowerCase()
@@ -708,6 +768,7 @@
                 currentUser = null;
                 idTokenActual = null;
                 userKeyActual = null;
+                cargarModoOscuroUsuario();
                 document.getElementById("loginView").classList.remove("hidden");
                 document.getElementById("appView").classList.add("hidden");
                 return;
@@ -715,6 +776,7 @@
 
               currentUser = user;
               userKeyActual = sanitizarClaveFirebase(user.email);
+              cargarModoOscuroUsuario();
               idTokenActual = await user.getIdToken(true);
 
               document.getElementById("loginView").classList.add("hidden");
@@ -1011,11 +1073,20 @@
 
               const stockAnterior = Number(insumo.StockActual) || 0;
               const costoAnterior = Number(insumo.CostoIngresado) || 0;
-              const costoTotalAnterior = insumo.EsCostoTotal ? costoAnterior : (costoAnterior * stockAnterior);
+              const eraCostoTotal = insumo.EsCostoTotal !== false;
+              const costoTotalAnterior = eraCostoTotal ? costoAnterior : (costoAnterior * stockAnterior);
 
-              insumo.StockActual = stockAnterior + cantReal;
-              insumo.CostoIngresado = costoTotalAnterior + costoCompra;
-              insumo.EsCostoTotal = true;
+              const nuevoStockTotal = stockAnterior + cantReal;
+              const nuevoCostoTotalInventario = costoTotalAnterior + costoCompra;
+
+              insumo.StockActual = nuevoStockTotal;
+              if (eraCostoTotal) {
+                insumo.CostoIngresado = nuevoCostoTotalInventario;
+                insumo.EsCostoTotal = true;
+              } else {
+                insumo.CostoIngresado = nuevoStockTotal > 0 ? (nuevoCostoTotalInventario / nuevoStockTotal) : 0;
+                insumo.EsCostoTotal = false;
+              }
 
               if (costoCompra > 0) {
                 registrarGastoInterno("Compra: " + insumo.Nombre, costoCompra);
