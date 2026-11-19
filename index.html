@@ -741,7 +741,31 @@
 
             function formatearMoneda(valor) {
               const num = Number(valor) || 0;
-              return "$" + num.toLocaleString("es-CO", { maximumFractionDigits: 0 });
+              return "$" + num.toLocaleString("es-CO", { maximumFractionDigits: 2 });
+            }
+
+            function obtenerMetricasCostoActual(insumo) {
+              const stockActual = Math.max(0, Number(insumo.StockActual) || 0);
+              const costoIngresado = Math.max(0, Number(insumo.CostoIngresado) || 0);
+              const esCostoTotal = insumo.EsCostoTotal !== false;
+
+              if (stockActual <= 0) {
+                return {
+                  costoUnitarioPromedio: 0,
+                  valorStockActual: 0
+                };
+              }
+
+              const valorStockActual = esCostoTotal
+                ? costoIngresado
+                : (costoIngresado * stockActual);
+
+              const costoUnitarioPromedio = valorStockActual / stockActual;
+
+              return {
+                costoUnitarioPromedio,
+                valorStockActual
+              };
             }
 
             function setSyncStatus(texto) {
@@ -935,18 +959,21 @@
                 return;
               }
 
-              cont.innerHTML = items.map(i => `
+              cont.innerHTML = items.map(i => {
+                const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
+                return `
                 <div class="card">
                   <div>
                     <div class="card-title">${escaparHtml(i.Nombre)}</div>
                     <div class="card-meta">Stock actual: <strong>${escaparHtml(formatearStock(i))}</strong></div>
-                    <div class="card-meta">Costo registrado: ${formatearMoneda(i.CostoIngresado)} (${i.EsCostoTotal ? "Total" : "Unitario"})</div>
+                    <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
                   </div>
                   <div class="card-actions">
                     <button class="btn btn-success" type="button" onclick="abrirModalRestock('${i.Id}')">Reabastecer</button>
                   </div>
                 </div>
-              `).join("");
+              `;
+              }).join("");
             };
 
             window.abrirModalRestock = function (id) {
@@ -1071,22 +1098,15 @@
                 }
               }
 
-              const stockAnterior = Number(insumo.StockActual) || 0;
-              const costoAnterior = Number(insumo.CostoIngresado) || 0;
-              const eraCostoTotal = insumo.EsCostoTotal !== false;
-              const costoTotalAnterior = eraCostoTotal ? costoAnterior : (costoAnterior * stockAnterior);
+              const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
+              const { valorStockActual: costoTotalAnterior } = obtenerMetricasCostoActual(insumo);
 
               const nuevoStockTotal = stockAnterior + cantReal;
               const nuevoCostoTotalInventario = costoTotalAnterior + costoCompra;
 
               insumo.StockActual = nuevoStockTotal;
-              if (eraCostoTotal) {
-                insumo.CostoIngresado = nuevoCostoTotalInventario;
-                insumo.EsCostoTotal = true;
-              } else {
-                insumo.CostoIngresado = nuevoStockTotal > 0 ? (nuevoCostoTotalInventario / nuevoStockTotal) : 0;
-                insumo.EsCostoTotal = false;
-              }
+              insumo.CostoIngresado = nuevoCostoTotalInventario;
+              insumo.EsCostoTotal = true;
 
               if (costoCompra > 0) {
                 registrarGastoInterno("Compra: " + insumo.Nombre, costoCompra);
@@ -1109,12 +1129,14 @@
                 return;
               }
 
-              cont.innerHTML = items.map(i => `
+              cont.innerHTML = items.map(i => {
+                const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
+                return `
                 <div class="card">
                   <div>
                     <div class="card-title">${escaparHtml(i.Nombre)}</div>
                     <div class="card-meta">Stock: <strong>${escaparHtml(formatearStock(i))}</strong></div>
-                    <div class="card-meta">Costo: ${formatearMoneda(i.CostoIngresado)} (${i.EsCostoTotal ? "Total" : "Unitario"})</div>
+                    <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
                   </div>
                   <div class="card-actions">
                     <button class="btn" type="button" onclick="abrirModalEditarInsumo('${i.Id}')">Editar</button>
@@ -1122,7 +1144,8 @@
                     <button class="btn btn-danger" type="button" onclick="eliminarInsumo('${i.Id}')">Eliminar</button>
                   </div>
                 </div>
-              `).join("");
+              `;
+              }).join("");
             };
 
             window.abrirModalNuevoInsumo = function (origen) {
@@ -1274,7 +1297,15 @@
                 return;
               }
 
-              insumo.StockActual = Math.max(0, (Number(insumo.StockActual) || 0) - cantMerma);
+              const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
+              const { costoUnitarioPromedio } = obtenerMetricasCostoActual(insumo);
+              const stockDescontado = Math.min(stockAnterior, cantMerma);
+              const nuevoStock = Math.max(0, stockAnterior - cantMerma);
+
+              insumo.StockActual = nuevoStock;
+              if (insumo.EsCostoTotal !== false) {
+                insumo.CostoIngresado = Math.max(0, (Number(insumo.CostoIngresado) || 0) - (stockDescontado * costoUnitarioPromedio));
+              }
 
               const montoMerma = parseFloat(document.getElementById("txtMermaMonto").value) || 0;
               if (montoMerma > 0) {
@@ -1413,7 +1444,12 @@
                 fac.InsumosDescontados.forEach(ing => {
                   const ins = (estado.Inventario || []).find(i => i.Id === ing.InsumoId);
                   if (ins) {
-                    ins.StockActual = (Number(ins.StockActual) || 0) + (Number(ing.Cantidad) || 0);
+                    const cantDevuelta = Number(ing.Cantidad) || 0;
+                    const { costoUnitarioPromedio } = obtenerMetricasCostoActual(ins);
+                    ins.StockActual = (Number(ins.StockActual) || 0) + cantDevuelta;
+                    if (ins.EsCostoTotal !== false) {
+                      ins.CostoIngresado = (Number(ins.CostoIngresado) || 0) + (cantDevuelta * costoUnitarioPromedio);
+                    }
                   }
                 });
               }
