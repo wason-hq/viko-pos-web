@@ -872,60 +872,17 @@
         <main class="container">
             <!-- SECCIÓN ADMIN -->
             <section id="secAdmin" class="hidden">
-                <div class="admin-grid">
-                    <!-- Permisos y Seguridad Operativa -->
-                    <div class="card">
-                        <div>
-                            <h3 class="card-title">Permisos Operativos Globales</h3>
-                            <p class="card-meta">Controla acciones sensibles disponibles en terminales y sesiones conectadas.</p>
-
-                            <div class="perm-toggle">
-                                <div>
-                                    <strong>Permitir eliminar facturas</strong>
-                                    <div class="card-meta">Reintegra insumos y descuenta del corte</div>
-                                </div>
-                                <input id="chkPermEliminarFactura" type="checkbox" checked onchange="actualizarPermisoAdmin('PermitirEliminarFactura', this.checked)" />
-                            </div>
-
-                            <div class="perm-toggle">
-                                <div>
-                                    <strong>Permitir registrar mermas</strong>
-                                    <div class="card-meta">Descuenta stock dañado y traslada valor</div>
-                                </div>
-                                <input id="chkPermMerma" type="checkbox" checked onchange="actualizarPermisoAdmin('PermitirMerma', this.checked)" />
-                            </div>
-
-                            <div class="perm-toggle">
-                                <div>
-                                    <strong>Permitir cerrar turno</strong>
-                                    <div class="card-meta">Cierra el turno operativo activo</div>
-                                </div>
-                                <input id="chkPermCerrarTurno" type="checkbox" checked onchange="actualizarPermisoAdmin('PermitirCerrarTurno', this.checked)" />
-                            </div>
-
-                            <div class="perm-toggle">
-                                <div>
-                                    <strong>Permitir editar inventario</strong>
-                                    <div class="card-meta">Habilita edición y borrado de insumos</div>
-                                </div>
-                                <input id="chkPermEditarInventario" type="checkbox" checked onchange="actualizarPermisoAdmin('PermitirEditarInventario', this.checked)" />
-                            </div>
-                        </div>
-
-                        <div class="card-actions">
-                            <button class="btn btn-secondary" type="button" onclick="sincronizarManual()">Forzar Sincronización</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Terminales / Dispositivos (Admin y Trabajadores) -->
-                <div class="list-box" style="margin-top: 16px;">
+                <div class="list-box">
                     <div class="toolbar" style="margin-bottom: 10px;">
                         <div>
                             <h3 class="card-title" style="margin: 0;">Terminales Registradas (Admin y Trabajadores)</h3>
                             <div id="lblAdminResumenEstado" class="card-meta"></div>
                         </div>
-                        <button class="btn" type="button" onclick="registrarTerminalActual()">+ Registrar Terminal Actual</button>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn btn-secondary" type="button" onclick="sincronizarManual()">Forzar Sincronización</button>
+                            <button class="btn" type="button" onclick="registrarTerminalActual()">+ Registrar Terminal Actual</button>
+                        </div>
                     </div>
                     <div id="listaTerminalesAdmin"></div>
                 </div>
@@ -1119,1422 +1076,1417 @@
     </div>
 
     <script type="module">
-                        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-                        import {
-                          getAuth,
-                          GoogleAuthProvider,
-                          signInWithPopup,
-                          signOut,
-                          onAuthStateChanged
-                        } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+                                import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+                                import {
+                                  getAuth,
+                                  GoogleAuthProvider,
+                                  signInWithPopup,
+                                  signOut,
+                                  onAuthStateChanged
+                                } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
-                        const firebaseConfig = {
-                          apiKey: "AIzaSyD_oOt_qQXqgoVrygBQuLrAZ2IBAkpEBdQ",
-                          authDomain: "viko-pos-app.firebaseapp.com",
-                          databaseURL: "https://viko-pos-app-default-rtdb.firebaseio.com",
-                          projectId: "viko-pos-app"
-                        };
+                                const firebaseConfig = {
+                                  apiKey: "AIzaSyD_oOt_qQXqgoVrygBQuLrAZ2IBAkpEBdQ",
+                                  authDomain: "viko-pos-app.firebaseapp.com",
+                                  databaseURL: "https://viko-pos-app-default-rtdb.firebaseio.com",
+                                  projectId: "viko-pos-app"
+                                };
 
-                        const app = initializeApp(firebaseConfig);
-                        const auth = getAuth(app);
-                        const googleProvider = new GoogleAuthProvider();
+                                const app = initializeApp(firebaseConfig);
+                                const auth = getAuth(app);
+                                const googleProvider = new GoogleAuthProvider();
 
-                        let currentUser = null;
-                        let idTokenActual = null;
-                        let userKeyActual = null;
-                        let codigoWebValidadoEnSesion = false;
+                                let currentUser = null;
+                                let idTokenActual = null;
+                                let userKeyActual = null;
+                                let codigoWebValidadoEnSesion = false;
 
-                        let estado = {
-                          Uid: "",
-                          Email: "",
-                          NombreNegocio: "",
-                          Rubro: "Comida Rápida",
-                          SucursalId: "Principal",
-                          Permisos: {
-                            PermitirEliminarFactura: true,
-                            PermitirMerma: true,
-                            PermitirCerrarTurno: true,
-                            PermitirEditarInventario: true
-                          },
-                          Terminales: [],
-                          FechaActualizacion: "1970-01-01T00:00:00.000Z",
-                          Inventario: [],
-                          ProductosVenta: [],
-                          Turnos: [],
-                          Facturas: [],
-                          Gastos: []
-                        };
+                                let estado = {
+                                  Uid: "",
+                                  Email: "",
+                                  NombreNegocio: "",
+                                  Rubro: "Comida Rápida",
+                                  SucursalId: "Principal",
+                                  Terminales: [],
+                                  FechaActualizacion: "1970-01-01T00:00:00.000Z",
+                                  Inventario: [],
+                                  ProductosVenta: [],
+                                  Turnos: [],
+                                  Facturas: [],
+                                  Gastos: []
+                                };
 
-                        let hayCambiosPendientes = false;
-                        let sincronizando = false;
-                        let seccionActual = "Compras";
-                        let periodoActual = "Dia";
-                        let subTabCorte = "Facturas";
-                        let modoOscuroActivo = false;
+                                let hayCambiosPendientes = false;
+                                let sincronizando = false;
+                                let seccionActual = "Compras";
+                                let periodoActual = "Dia";
+                                let subTabCorte = "Facturas";
+                                let modoOscuroActivo = false;
 
-                        // Estado modales
-                        let idRestockActual = null;
-                        let restockModoMayor = false;
+                                // Estado modales
+                                let idRestockActual = null;
+                                let restockModoMayor = false;
 
-                        let idInsumoEditando = null;
-                        let origenModalInsumo = "Inventario";
-                        let esModoPesoForm = false;
-                        let esCostoTotalForm = true;
-                        let unidadFormSeleccionada = "Unidad";
+                                let idInsumoEditando = null;
+                                let origenModalInsumo = "Inventario";
+                                let esModoPesoForm = false;
+                                let esCostoTotalForm = true;
+                                let unidadFormSeleccionada = "Unidad";
 
-                        let idMermaActual = null;
+                                let idMermaActual = null;
 
-                        const PERMISOS_TERMINAL_KEYS = [
-                          { key: "PermitirEliminarFactura", label: "Eliminar facturas" },
-                          { key: "PermitirMerma", label: "Mermas" },
-                          { key: "PermitirCerrarTurno", label: "Cerrar turno" },
-                          { key: "PermitirEditarInventario", label: "Editar inventario" },
-                          { key: "PermitirVentas", label: "Ventas / Caja" }
-                        ];
+                                // 0 = Permitido, 1 = Bloqueado, 2 = Oculto (sincronizado con ModoPermisoTerminal en MAUI/EXE)
+                                const MODULOS_PERMISO_TERMINAL = [
+                                  { modoKey: "ModoRecetas", boolKey: "PuedeEditarRecetas", label: "Recetas", defecto: 2 },
+                                  { modoKey: "ModoInventario", boolKey: "PuedeGestionarInventario", label: "Inventario", defecto: 1 },
+                                  { modoKey: "ModoCompras", boolKey: "PuedeVerCompras", label: "Compras", defecto: 2 },
+                                  { modoKey: "ModoRegistrarGastos", boolKey: "PuedeRegistrarGastos", label: "Registrar gastos", defecto: 2 },
+                                  { modoKey: "ModoEliminarFacturas", boolKey: "PuedeEliminarFacturas", label: "Eliminar facturas", defecto: 2 }
+                                ];
 
-                        function normalizarPermisos(raw) {
-                          const p = raw || {};
-                          return {
-                            PermitirEliminarFactura: p.PermitirEliminarFactura !== false,
-                            PermitirMerma: p.PermitirMerma !== false,
-                            PermitirCerrarTurno: p.PermitirCerrarTurno !== false,
-                            PermitirEditarInventario: p.PermitirEditarInventario !== false,
-                            PermitirVentas: p.PermitirVentas !== false
-                          };
-                        }
-
-                        function normalizarEstado(remoto) {
-                          const r = remoto || {};
-                          const terminales = Array.isArray(r.Terminales)
-                            ? r.Terminales.map(t => ({
-                                ...t,
-                                Rol: t?.Rol || (t?.EsTrabajador ? "Trabajador" : "Admin"),
-                                Activa: t?.Activa !== false,
-                                Permisos: normalizarPermisos(t?.Permisos || r.Permisos)
-                              }))
-                            : [];
-
-                          return {
-                            Uid: r.Uid || currentUser?.uid || "",
-                            Email: r.Email || currentUser?.email || "",
-                            NombreNegocio: r.NombreNegocio || "",
-                            Rubro: r.Rubro || "Comida Rápida",
-                            SucursalId: r.SucursalId || "Principal",
-                            Permisos: normalizarPermisos(r.Permisos),
-                            Terminales: terminales,
-                            FechaActualizacion: r.FechaActualizacion || new Date().toISOString(),
-                            Inventario: Array.isArray(r.Inventario) ? r.Inventario : [],
-                            ProductosVenta: Array.isArray(r.ProductosVenta) ? r.ProductosVenta : [],
-                            Turnos: Array.isArray(r.Turnos) ? r.Turnos : [],
-                            Facturas: Array.isArray(r.Facturas) ? r.Facturas : [],
-                            Gastos: Array.isArray(r.Gastos) ? r.Gastos : []
-                          };
-                        }
-
-                        function actualizarEncabezadoAdmin() {
-                          const negocioLimpio = (estado.NombreNegocio || "").trim();
-                          const mostrarNegocio = negocioLimpio && negocioLimpio.toLowerCase() !== "burger master"
-                            ? negocioLimpio
-                            : "Viko POS";
-                          document.getElementById("lblNegocio").textContent = mostrarNegocio;
-                          document.getElementById("lblRubroBadge").textContent = estado.Rubro || "Comida Rápida";
-                        }
-
-                        function obtenerClaveTemaUsuario() {
-                          return "viko_pos_dark_mode_" + (userKeyActual || "guest");
-                        }
-
-                        function aplicarEstadoModoOscuro(activo) {
-                          modoOscuroActivo = Boolean(activo);
-                          document.body.classList.toggle("dark-mode", modoOscuroActivo);
-                          const btn = document.getElementById("btnModoOscuro");
-                          if (btn) {
-                            btn.textContent = modoOscuroActivo ? "Modo claro" : "Modo oscuro";
-                          }
-                        }
-
-                        function cargarModoOscuroUsuario() {
-                          try {
-                            const guardado = localStorage.getItem(obtenerClaveTemaUsuario());
-                            aplicarEstadoModoOscuro(guardado === "1");
-                          } catch (e) {
-                            aplicarEstadoModoOscuro(false);
-                          }
-                        }
-
-                        window.toggleModoOscuro = function () {
-                          const siguiente = !modoOscuroActivo;
-                          aplicarEstadoModoOscuro(siguiente);
-                          try {
-                            localStorage.setItem(obtenerClaveTemaUsuario(), siguiente ? "1" : "0");
-                          } catch (e) {}
-                        };
-
-                        cargarModoOscuroUsuario();
-
-                        function sanitizarClaveFirebase(email) {
-                          return email.trim().toLowerCase()
-                            .replaceAll(".", "_")
-                            .replaceAll("@", "_at_")
-                            .replaceAll("$", "_")
-                            .replaceAll("#", "_")
-                            .replaceAll("[", "_")
-                            .replaceAll("]", "_");
-                        }
-
-                        async function sha256Hex16(texto) {
-                          const data = new TextEncoder().encode(texto);
-                          const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-                          const hashArray = Array.from(new Uint8Array(hashBuffer));
-                          return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
-                        }
-
-                        function obtenerIdDispositivoLocal() {
-                          try {
-                            let id = localStorage.getItem("viko_pos_device_id");
-                            if (!id) {
-                              id = generarGuid().slice(0, 8).toUpperCase();
-                              localStorage.setItem("viko_pos_device_id", id);
-                            }
-                            return id;
-                          } catch (e) {
-                            return "";
-                          }
-                        }
-
-                        async function verificarAccesoAutorizado(email, token) {
-                          const emailNorm = (email || "").trim().toLowerCase();
-                          if (!emailNorm || !token) return { permitido: false, motivo: "Sesión inválida." };
-
-                          const resp = await fetch(`${firebaseConfig.databaseURL}/correos_permitidos.json?auth=${encodeURIComponent(token)}`);
-                          if (!resp.ok) {
-                            return { permitido: false, motivo: "No se pudo verificar correos_permitidos en Firebase." };
-                          }
-
-                          const lista = await resp.json();
-                          let correoAutorizado = false;
-                          if (Array.isArray(lista)) {
-                            correoAutorizado = lista.some(c => String(c || "").trim().toLowerCase() === emailNorm);
-                          } else if (lista && typeof lista === "object") {
-                            correoAutorizado = Object.entries(lista).some(([k, v]) => {
-                              if (typeof v === "string") return v.trim().toLowerCase() === emailNorm;
-                              return v === true && String(k || "").trim().toLowerCase().replace("_at_", "@") === emailNorm;
-                            });
-                          }
-
-                          if (!correoAutorizado) {
-                            return { permitido: false, motivo: "Acceso denegado: tu correo no está en correos_permitidos." };
-                          }
-
-                          const devId = obtenerIdDispositivoLocal();
-                          const userKey = sanitizarClaveFirebase(emailNorm);
-                          const dispResp = await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKey}.json?auth=${encodeURIComponent(token)}`);
-                          if (dispResp.ok) {
-                            const dispData = await dispResp.json();
-                            if (dispData && typeof dispData === "object") {
-                              const entradas = Object.entries(dispData);
-                              if (entradas.length > 0) {
-                                const match = entradas.find(([k, val]) => {
-                                  const activo = typeof val === "object" && val !== null ? val.activo !== false : Boolean(val);
-                                  return activo && (k === devId || (typeof val === "object" && val?.id === devId));
-                                });
-                                if (!match) {
-                                  return { permitido: false, motivo: "Acceso denegado: este dispositivo no está autorizado." };
+                                function resolverModoNumero(valModo, valBool, defecto) {
+                                  if (typeof valModo === "number" && [0, 1, 2].includes(valModo)) return valModo;
+                                  if (typeof valModo === "string" && ["0", "1", "2"].includes(valModo.trim())) return Number(valModo.trim());
+                                  if (typeof valBool === "boolean") return valBool ? 0 : defecto;
+                                  return defecto;
                                 }
-                              }
-                            }
-                          }
 
-                          return { permitido: true, motivo: "" };
-                        }
+                                function normalizarPermisosPersonalizados(raw) {
+                                  const p = raw || {};
+                                  const modoRecetas = resolverModoNumero(p.ModoRecetas, p.PuedeEditarRecetas, 2);
+                                  const modoInventario = resolverModoNumero(p.ModoInventario, p.PuedeGestionarInventario, 1);
+                                  const modoCompras = resolverModoNumero(p.ModoCompras, p.PuedeVerCompras, 2);
+                                  const modoRegistrarGastos = resolverModoNumero(p.ModoRegistrarGastos, p.PuedeRegistrarGastos, 2);
+                                  const modoEliminarFacturas = resolverModoNumero(p.ModoEliminarFacturas, p.PuedeEliminarFacturas, 2);
 
-                        async function mostrarModalCodigoWeb(email) {
-                          codigoWebValidadoEnSesion = false;
-                          document.getElementById("loginView").classList.add("hidden");
-                          document.getElementById("appView").classList.add("hidden");
-                          document.getElementById("lblCodigoCuentaEmail").textContent = email;
-                          document.getElementById("txtCodigoWebIngreso").value = "";
-                          document.getElementById("codigoWebError").textContent = "";
-                          document.getElementById("modalCodigoWeb").classList.remove("hidden");
-                          setTimeout(() => document.getElementById("txtCodigoWebIngreso")?.focus(), 50);
-                        }
+                                  return {
+                                    ModoRecetas: modoRecetas,
+                                    ModoInventario: modoInventario,
+                                    ModoCompras: modoCompras,
+                                    ModoRegistrarGastos: modoRegistrarGastos,
+                                    ModoEliminarFacturas: modoEliminarFacturas,
+                                    PuedeEditarRecetas: modoRecetas === 0,
+                                    PuedeGestionarInventario: modoInventario === 0,
+                                    PuedeVerCompras: modoCompras === 0,
+                                    PuedeRegistrarGastos: modoRegistrarGastos === 0,
+                                    PuedeEliminarFacturas: modoEliminarFacturas === 0
+                                  };
+                                }
 
-                        window.cancelarCodigoWeb = async function () {
-                          document.getElementById("modalCodigoWeb").classList.add("hidden");
-                          await signOut(auth);
-                        };
+                                function etiquetaModo(modo) {
+                                  if (modo === 0) return "Permitido";
+                                  if (modo === 1) return "Bloqueado";
+                                  return "Oculto";
+                                }
 
-                        async function obtenerPayloadCodigoWebFirebase(userKey, token) {
-                          const authQuery = token ? `?auth=${encodeURIComponent(token)}` : "";
-                          const respUsuario = await fetch(`${firebaseConfig.databaseURL}/usuarios/${userKey}/codigoWebAdmin.json${authQuery}`);
-                          if (respUsuario.ok) {
-                            const d = await respUsuario.json();
-                            if (d && typeof d === "object" && d.Codigo) return d;
-                          }
+                                function siguienteModo(modoActual) {
+                                  return (modoActual + 1) % 3;
+                                }
 
-                          const respRaiz = await fetch(`${firebaseConfig.databaseURL}/codigosWebAdmin/${userKey}.json${authQuery}`);
-                          if (respRaiz.ok) {
-                            const d2 = await respRaiz.json();
-                            if (d2 && typeof d2 === "object" && d2.Codigo) return d2;
-                          }
+                                function normalizarEstado(remoto) {
+                                  const r = remoto || {};
+                                  const terminales = Array.isArray(r.Terminales)
+                                    ? r.Terminales.map(t => ({
+                                        ...t,
+                                        Rol: t?.Rol || (t?.EsTrabajador ? "Trabajador" : "Admin"),
+                                        Activa: t?.Activa !== false,
+                                        PermisosPersonalizados: normalizarPermisosPersonalizados(t?.PermisosPersonalizados || t?.permisosPersonalizados)
+                                      }))
+                                    : [];
 
-                          const claveHash = await sha256Hex16(currentUser.email.trim().toLowerCase());
-                          const respHash = await fetch(`${firebaseConfig.databaseURL}/codigosWebAdmin/${claveHash}.json${authQuery}`);
-                          if (respHash.ok) {
-                            const d3 = await respHash.json();
-                            if (d3 && typeof d3 === "object" && d3.Codigo) return d3;
-                          }
+                                  return {
+                                    Uid: r.Uid || currentUser?.uid || "",
+                                    Email: r.Email || currentUser?.email || "",
+                                    NombreNegocio: r.NombreNegocio || "",
+                                    Rubro: r.Rubro || "Comida Rápida",
+                                    SucursalId: r.SucursalId || "Principal",
+                                    Terminales: terminales,
+                                    FechaActualizacion: r.FechaActualizacion || new Date().toISOString(),
+                                    Inventario: Array.isArray(r.Inventario) ? r.Inventario : [],
+                                    ProductosVenta: Array.isArray(r.ProductosVenta) ? r.ProductosVenta : [],
+                                    Turnos: Array.isArray(r.Turnos) ? r.Turnos : [],
+                                    Facturas: Array.isArray(r.Facturas) ? r.Facturas : [],
+                                    Gastos: Array.isArray(r.Gastos) ? r.Gastos : []
+                                  };
+                                }
 
-                          throw new Error("No disponible");
-                        }
+                                function actualizarEncabezadoAdmin() {
+                                  const negocioLimpio = (estado.NombreNegocio || "").trim();
+                                  const mostrarNegocio = negocioLimpio && negocioLimpio.toLowerCase() !== "burger master"
+                                    ? negocioLimpio
+                                    : "Viko POS";
+                                  document.getElementById("lblNegocio").textContent = mostrarNegocio;
+                                  document.getElementById("lblRubroBadge").textContent = estado.Rubro || "Comida Rápida";
+                                }
 
-                        window.validarCodigoWebAdmin = async function () {
-                          const errEl = document.getElementById("codigoWebError");
-                          errEl.textContent = "";
+                                function obtenerClaveTemaUsuario() {
+                                  return "viko_pos_dark_mode_" + (userKeyActual || "guest");
+                                }
 
-                          const ingresado = (document.getElementById("txtCodigoWebIngreso").value || "").trim().toUpperCase();
-                          if (!ingresado) {
-                            errEl.textContent = "Debes ingresar el CODIGO WEB ADMIN para continuar.";
-                            return;
-                          }
+                                function aplicarEstadoModoOscuro(activo) {
+                                  modoOscuroActivo = Boolean(activo);
+                                  document.body.classList.toggle("dark-mode", modoOscuroActivo);
+                                  const btn = document.getElementById("btnModoOscuro");
+                                  if (btn) {
+                                    btn.textContent = modoOscuroActivo ? "Modo claro" : "Modo oscuro";
+                                  }
+                                }
 
-                          if (!currentUser?.email || !userKeyActual) {
-                            errEl.textContent = "No hay sesión activa.";
-                            return;
-                          }
+                                function cargarModoOscuroUsuario() {
+                                  try {
+                                    const guardado = localStorage.getItem(obtenerClaveTemaUsuario());
+                                    aplicarEstadoModoOscuro(guardado === "1");
+                                  } catch (e) {
+                                    aplicarEstadoModoOscuro(false);
+                                  }
+                                }
 
-                          try {
-                            const token = await currentUser.getIdToken(true);
-                            idTokenActual = token;
-                            const data = await obtenerPayloadCodigoWebFirebase(userKeyActual, token);
+                                window.toggleModoOscuro = function () {
+                                  const siguiente = !modoOscuroActivo;
+                                  aplicarEstadoModoOscuro(siguiente);
+                                  try {
+                                    localStorage.setItem(obtenerClaveTemaUsuario(), siguiente ? "1" : "0");
+                                  } catch (e) {}
+                                };
 
-                            const codigoRemoto = String(data?.Codigo || "").trim().toUpperCase();
-                            const activo = data?.Activo !== false;
-                            const expiraMs = data?.ExpiraEn ? Date.parse(data.ExpiraEn) : NaN;
-                            const noVencido = Number.isNaN(expiraMs) ? true : (expiraMs > Date.now());
+                                cargarModoOscuroUsuario();
 
-                            if (!codigoRemoto || !activo || ingresado !== codigoRemoto) {
-                              errEl.textContent = "Código incorrecto o no registrado para esta cuenta Admin.";
-                              return;
-                            }
+                                function sanitizarClaveFirebase(email) {
+                                  return email.trim().toLowerCase()
+                                    .replaceAll(".", "_")
+                                    .replaceAll("@", "_at_")
+                                    .replaceAll("$", "_")
+                                    .replaceAll("#", "_")
+                                    .replaceAll("[", "_")
+                                    .replaceAll("]", "_");
+                                }
 
-                            if (!noVencido) {
-                              errEl.textContent = "El código de 12 horas ha expirado. Actualiza o abre Inicio en la app Admin.";
-                              return;
-                            }
+                                async function sha256Hex16(texto) {
+                                  const data = new TextEncoder().encode(texto);
+                                  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+                                  const hashArray = Array.from(new Uint8Array(hashBuffer));
+                                  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+                                }
 
-                            codigoWebValidadoEnSesion = true;
-                            document.getElementById("modalCodigoWeb").classList.add("hidden");
-                            document.getElementById("loginError").textContent = "";
-                            document.getElementById("appView").classList.remove("hidden");
-                            document.getElementById("lblUsuarioEmail").textContent = currentUser.email;
+                                function obtenerIdDispositivoLocal() {
+                                  try {
+                                    let id = localStorage.getItem("viko_pos_device_id");
+                                    if (!id) {
+                                      id = generarGuid().slice(0, 8).toUpperCase();
+                                      localStorage.setItem("viko_pos_device_id", id);
+                                    }
+                                    return id;
+                                  } catch (e) {
+                                    return "";
+                                  }
+                                }
 
-                            await descargarRemoto(true);
-                            renderTodo();
-                          } catch (e) {
-                            errEl.textContent = "Aún no aparece CODIGO WEB ADMIN en Firebase. Abre Inicio en tu app Admin y reintenta.";
-                          }
-                        };
+                                async function verificarAccesoAutorizado(email, token) {
+                                  const emailNorm = (email || "").trim().toLowerCase();
+                                  if (!emailNorm || !token) return { permitido: false, motivo: "Sesión inválida." };
 
-                        document.getElementById("txtCodigoWebIngreso").addEventListener("keydown", (e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            window.validarCodigoWebAdmin();
-                          }
-                        });
+                                  const resp = await fetch(`${firebaseConfig.databaseURL}/correos_permitidos.json?auth=${encodeURIComponent(token)}`);
+                                  if (!resp.ok) {
+                                    return { permitido: false, motivo: "No se pudo verificar correos_permitidos en Firebase." };
+                                  }
 
-                        function generarGuid() {
-                          if (crypto && crypto.randomUUID) return crypto.randomUUID();
-                          return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-                            const r = (Math.random() * 16) | 0;
-                            const v = c === "x" ? r : (r & 0x3) | 0x8;
-                            return v.toString(16);
-                          });
-                        }
+                                  const lista = await resp.json();
+                                  let correoAutorizado = false;
+                                  if (Array.isArray(lista)) {
+                                    correoAutorizado = lista.some(c => String(c || "").trim().toLowerCase() === emailNorm);
+                                  } else if (lista && typeof lista === "object") {
+                                    correoAutorizado = Object.entries(lista).some(([k, v]) => {
+                                      if (typeof v === "string") return v.trim().toLowerCase() === emailNorm;
+                                      return v === true && String(k || "").trim().toLowerCase().replace("_at_", "@") === emailNorm;
+                                    });
+                                  }
 
-                        function formatearMoneda(valor) {
-                          const num = Number(valor) || 0;
-                          return "$" + num.toLocaleString("es-CO", { maximumFractionDigits: 2 });
-                        }
+                                  if (!correoAutorizado) {
+                                    return { permitido: false, motivo: "Acceso denegado: tu correo no está en correos_permitidos." };
+                                  }
 
-                        function obtenerMetricasCostoActual(insumo) {
-                          const stockActual = Math.max(0, Number(insumo.StockActual) || 0);
-                          const costoIngresado = Math.max(0, Number(insumo.CostoIngresado) || 0);
-                          const esCostoTotal = insumo.EsCostoTotal !== false;
+                                  const devId = obtenerIdDispositivoLocal();
+                                  const userKey = sanitizarClaveFirebase(emailNorm);
+                                  const dispResp = await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKey}.json?auth=${encodeURIComponent(token)}`);
+                                  if (dispResp.ok) {
+                                    const dispData = await dispResp.json();
+                                    if (dispData && typeof dispData === "object") {
+                                      const entradas = Object.entries(dispData);
+                                      if (entradas.length > 0) {
+                                        const match = entradas.find(([k, val]) => {
+                                          const activo = typeof val === "object" && val !== null ? val.activo !== false : Boolean(val);
+                                          return activo && (k === devId || (typeof val === "object" && val?.id === devId));
+                                        });
+                                        if (!match) {
+                                          return { permitido: false, motivo: "Acceso denegado: este dispositivo no está autorizado." };
+                                        }
+                                      }
+                                    }
+                                  }
 
-                          if (stockActual <= 0) {
-                            return {
-                              costoUnitarioPromedio: 0,
-                              valorStockActual: 0
-                            };
-                          }
+                                  return { permitido: true, motivo: "" };
+                                }
 
-                          const valorStockActual = esCostoTotal
-                            ? costoIngresado
-                            : (costoIngresado * stockActual);
+                                async function mostrarModalCodigoWeb(email) {
+                                  codigoWebValidadoEnSesion = false;
+                                  document.getElementById("loginView").classList.add("hidden");
+                                  document.getElementById("appView").classList.add("hidden");
+                                  document.getElementById("lblCodigoCuentaEmail").textContent = email;
+                                  document.getElementById("txtCodigoWebIngreso").value = "";
+                                  document.getElementById("codigoWebError").textContent = "";
+                                  document.getElementById("modalCodigoWeb").classList.remove("hidden");
+                                  setTimeout(() => document.getElementById("txtCodigoWebIngreso")?.focus(), 50);
+                                }
 
-                          const costoUnitarioPromedio = valorStockActual / stockActual;
+                                window.cancelarCodigoWeb = async function () {
+                                  document.getElementById("modalCodigoWeb").classList.add("hidden");
+                                  await signOut(auth);
+                                };
 
-                          return {
-                            costoUnitarioPromedio,
-                            valorStockActual
-                          };
-                        }
+                                async function obtenerPayloadCodigoWebFirebase(userKey, token) {
+                                  const authQuery = token ? `?auth=${encodeURIComponent(token)}` : "";
+                                  const respUsuario = await fetch(`${firebaseConfig.databaseURL}/usuarios/${userKey}/codigoWebAdmin.json${authQuery}`);
+                                  if (respUsuario.ok) {
+                                    const d = await respUsuario.json();
+                                    if (d && typeof d === "object" && d.Codigo) return d;
+                                  }
 
-                        function setSyncStatus(texto) {
-                          const el = document.getElementById("lblSyncStatus");
-                          if (el) el.textContent = texto;
-                        }
+                                  const respRaiz = await fetch(`${firebaseConfig.databaseURL}/codigosWebAdmin/${userKey}.json${authQuery}`);
+                                  if (respRaiz.ok) {
+                                    const d2 = await respRaiz.json();
+                                    if (d2 && typeof d2 === "object" && d2.Codigo) return d2;
+                                  }
 
-                        document.getElementById("btnGoogleLogin").addEventListener("click", async () => {
-                          const errEl = document.getElementById("loginError");
-                          errEl.textContent = "";
-                          try {
-                            await signInWithPopup(auth, googleProvider);
-                          } catch (err) {
-                            errEl.textContent = err?.message || "No se pudo iniciar sesión con Google.";
-                          }
-                        });
+                                  const claveHash = await sha256Hex16(currentUser.email.trim().toLowerCase());
+                                  const respHash = await fetch(`${firebaseConfig.databaseURL}/codigosWebAdmin/${claveHash}.json${authQuery}`);
+                                  if (respHash.ok) {
+                                    const d3 = await respHash.json();
+                                    if (d3 && typeof d3 === "object" && d3.Codigo) return d3;
+                                  }
 
-                        window.cerrarSesion = async function () {
-                          codigoWebValidadoEnSesion = false;
-                          await signOut(auth);
-                        };
+                                  throw new Error("No disponible");
+                                }
 
-                        onAuthStateChanged(auth, async (user) => {
-                          if (!user || !user.email) {
-                            currentUser = null;
-                            idTokenActual = null;
-                            userKeyActual = null;
-                            codigoWebValidadoEnSesion = false;
-                            cargarModoOscuroUsuario();
-                            document.getElementById("modalCodigoWeb").classList.add("hidden");
-                            document.getElementById("loginView").classList.remove("hidden");
-                            document.getElementById("appView").classList.add("hidden");
-                            return;
-                          }
+                                window.validarCodigoWebAdmin = async function () {
+                                  const errEl = document.getElementById("codigoWebError");
+                                  errEl.textContent = "";
 
-                          const token = await user.getIdToken(true);
-                          const acceso = await verificarAccesoAutorizado(user.email, token);
-                          if (!acceso.permitido) {
-                            document.getElementById("loginError").textContent = acceso.motivo;
-                            await signOut(auth);
-                            return;
-                          }
+                                  const ingresado = (document.getElementById("txtCodigoWebIngreso").value || "").trim().toUpperCase();
+                                  if (!ingresado) {
+                                    errEl.textContent = "Debes ingresar el CODIGO WEB ADMIN para continuar.";
+                                    return;
+                                  }
 
-                          currentUser = user;
-                          userKeyActual = sanitizarClaveFirebase(user.email);
-                          cargarModoOscuroUsuario();
-                          idTokenActual = token;
+                                  if (!currentUser?.email || !userKeyActual) {
+                                    errEl.textContent = "No hay sesión activa.";
+                                    return;
+                                  }
 
-                          if (!codigoWebValidadoEnSesion) {
-                            await mostrarModalCodigoWeb(user.email);
-                            return;
-                          }
+                                  try {
+                                    const token = await currentUser.getIdToken(true);
+                                    idTokenActual = token;
+                                    const data = await obtenerPayloadCodigoWebFirebase(userKeyActual, token);
 
-                          document.getElementById("loginError").textContent = "";
-                          document.getElementById("modalCodigoWeb").classList.add("hidden");
-                          document.getElementById("loginView").classList.add("hidden");
-                          document.getElementById("appView").classList.remove("hidden");
-                          document.getElementById("lblUsuarioEmail").textContent = user.email;
+                                    const codigoRemoto = String(data?.Codigo || "").trim().toUpperCase();
+                                    const activo = data?.Activo !== false;
+                                    const expiraMs = data?.ExpiraEn ? Date.parse(data.ExpiraEn) : NaN;
+                                    const noVencido = Number.isNaN(expiraMs) ? true : (expiraMs > Date.now());
 
-                          await descargarRemoto(true);
-                          renderTodo();
-                        });
+                                    if (!codigoRemoto || !activo || ingresado !== codigoRemoto) {
+                                      errEl.textContent = "Código incorrecto o no registrado para esta cuenta Admin.";
+                                      return;
+                                    }
 
-                        setInterval(async () => {
-                          if (!currentUser || !codigoWebValidadoEnSesion || sincronizando || hayCambiosPendientes) return;
-                          await descargarRemoto(false);
-                        }, 5000);
+                                    if (!noVencido) {
+                                      errEl.textContent = "El código de 12 horas ha expirado. Actualiza o abre Inicio en la app Admin.";
+                                      return;
+                                    }
 
-                        window.sincronizarManual = async function () {
-                          if (!currentUser || !codigoWebValidadoEnSesion) return;
-                          if (hayCambiosPendientes) {
-                            await subirCambios();
-                          }
-                          await descargarRemoto(true);
-                        };
+                                    codigoWebValidadoEnSesion = true;
+                                    document.getElementById("modalCodigoWeb").classList.add("hidden");
+                                    document.getElementById("loginError").textContent = "";
+                                    document.getElementById("appView").classList.remove("hidden");
+                                    document.getElementById("lblUsuarioEmail").textContent = currentUser.email;
 
-                        async function refrescarTokenSiNecesario() {
-                          if (!currentUser) return null;
-                          idTokenActual = await currentUser.getIdToken(false);
-                          return idTokenActual;
-                        }
+                                    await descargarRemoto(true);
+                                    renderTodo();
+                                  } catch (e) {
+                                    errEl.textContent = "Aún no aparece CODIGO WEB ADMIN en Firebase. Abre Inicio en tu app Admin y reintenta.";
+                                  }
+                                };
 
-                        async function descargarRemoto(forzarRender) {
-                          if (!currentUser || !userKeyActual || !codigoWebValidadoEnSesion || sincronizando || hayCambiosPendientes) return;
-                          sincronizando = true;
-                          try {
-                            const token = await refrescarTokenSiNecesario();
-                            if (!token) return;
+                                document.getElementById("txtCodigoWebIngreso").addEventListener("keydown", (e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    window.validarCodigoWebAdmin();
+                                  }
+                                });
 
-                            const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
-                            const resp = await fetch(url);
-                            if (!resp.ok) {
-                              setSyncStatus("Error al leer Firebase (" + resp.status + ")");
-                              return;
-                            }
+                                function generarGuid() {
+                                  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+                                  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+                                    const r = (Math.random() * 16) | 0;
+                                    const v = c === "x" ? r : (r & 0x3) | 0x8;
+                                    return v.toString(16);
+                                  });
+                                }
 
-                            const remoto = await resp.json();
+                                function formatearMoneda(valor) {
+                                  const num = Number(valor) || 0;
+                                  return "$" + num.toLocaleString("es-CO", { maximumFractionDigits: 2 });
+                                }
 
-                            let terminalesFusionadas = Array.isArray(remoto?.Terminales) ? [...remoto.Terminales] : [];
+                                function obtenerMetricasCostoActual(insumo) {
+                                  const stockActual = Math.max(0, Number(insumo.StockActual) || 0);
+                                  const costoIngresado = Math.max(0, Number(insumo.CostoIngresado) || 0);
+                                  const esCostoTotal = insumo.EsCostoTotal !== false;
 
-                            if (remoto?.terminales_por_dispositivo && typeof remoto.terminales_por_dispositivo === "object") {
-                              for (const [k, val] of Object.entries(remoto.terminales_por_dispositivo)) {
-                                if (typeof val === "object" && val !== null) {
-                                  const idTerm = val.DeviceId || val.id || k;
-                                  const idx = terminalesFusionadas.findIndex(x => x.Id === idTerm);
-                                  const nombreEq = val.NombreEquipo || val.nombre || idTerm;
-                                  const plat = val.Plataforma ? ` (${val.Plataforma})` : "";
-                                  const rolDetectado = val.Rol || val.rol || (val.EsTrabajador || val.esTrabajador ? "Trabajador" : "Admin");
-                                  const permDetectados = normalizarPermisos(val.Permisos || val.permisos || remoto?.Permisos);
-
-                                  if (idx >= 0) {
-                                    terminalesFusionadas[idx] = {
-                                      ...terminalesFusionadas[idx],
-                                      Nombre: terminalesFusionadas[idx].Nombre || `${nombreEq}${plat}`,
-                                      Rol: terminalesFusionadas[idx].Rol || rolDetectado,
-                                      Activa: val.Activa !== undefined ? val.Activa !== false : (terminalesFusionadas[idx].Activa !== false),
-                                      Permisos: normalizarPermisos(terminalesFusionadas[idx].Permisos || permDetectados)
+                                  if (stockActual <= 0) {
+                                    return {
+                                      costoUnitarioPromedio: 0,
+                                      valorStockActual: 0
                                     };
+                                  }
+
+                                  const valorStockActual = esCostoTotal
+                                    ? costoIngresado
+                                    : (costoIngresado * stockActual);
+
+                                  const costoUnitarioPromedio = valorStockActual / stockActual;
+
+                                  return {
+                                    costoUnitarioPromedio,
+                                    valorStockActual
+                                  };
+                                }
+
+                                function setSyncStatus(texto) {
+                                  const el = document.getElementById("lblSyncStatus");
+                                  if (el) el.textContent = texto;
+                                }
+
+                                document.getElementById("btnGoogleLogin").addEventListener("click", async () => {
+                                  const errEl = document.getElementById("loginError");
+                                  errEl.textContent = "";
+                                  try {
+                                    await signInWithPopup(auth, googleProvider);
+                                  } catch (err) {
+                                    errEl.textContent = err?.message || "No se pudo iniciar sesión con Google.";
+                                  }
+                                });
+
+                                window.cerrarSesion = async function () {
+                                  codigoWebValidadoEnSesion = false;
+                                  await signOut(auth);
+                                };
+
+                                onAuthStateChanged(auth, async (user) => {
+                                  if (!user || !user.email) {
+                                    currentUser = null;
+                                    idTokenActual = null;
+                                    userKeyActual = null;
+                                    codigoWebValidadoEnSesion = false;
+                                    cargarModoOscuroUsuario();
+                                    document.getElementById("modalCodigoWeb").classList.add("hidden");
+                                    document.getElementById("loginView").classList.remove("hidden");
+                                    document.getElementById("appView").classList.add("hidden");
+                                    return;
+                                  }
+
+                                  const token = await user.getIdToken(true);
+                                  const acceso = await verificarAccesoAutorizado(user.email, token);
+                                  if (!acceso.permitido) {
+                                    document.getElementById("loginError").textContent = acceso.motivo;
+                                    await signOut(auth);
+                                    return;
+                                  }
+
+                                  currentUser = user;
+                                  userKeyActual = sanitizarClaveFirebase(user.email);
+                                  cargarModoOscuroUsuario();
+                                  idTokenActual = token;
+
+                                  if (!codigoWebValidadoEnSesion) {
+                                    await mostrarModalCodigoWeb(user.email);
+                                    return;
+                                  }
+
+                                  document.getElementById("loginError").textContent = "";
+                                  document.getElementById("modalCodigoWeb").classList.add("hidden");
+                                  document.getElementById("loginView").classList.add("hidden");
+                                  document.getElementById("appView").classList.remove("hidden");
+                                  document.getElementById("lblUsuarioEmail").textContent = user.email;
+
+                                  await descargarRemoto(true);
+                                  renderTodo();
+                                });
+
+                                setInterval(async () => {
+                                  if (!currentUser || !codigoWebValidadoEnSesion || sincronizando || hayCambiosPendientes) return;
+                                  await descargarRemoto(false);
+                                }, 5000);
+
+                                window.sincronizarManual = async function () {
+                                  if (!currentUser || !codigoWebValidadoEnSesion) return;
+                                  if (hayCambiosPendientes) {
+                                    await subirCambios();
+                                  }
+                                  await descargarRemoto(true);
+                                };
+
+                                async function refrescarTokenSiNecesario() {
+                                  if (!currentUser) return null;
+                                  idTokenActual = await currentUser.getIdToken(false);
+                                  return idTokenActual;
+                                }
+
+                                async function descargarRemoto(forzarRender) {
+                                  if (!currentUser || !userKeyActual || !codigoWebValidadoEnSesion || sincronizando || hayCambiosPendientes) return;
+                                  sincronizando = true;
+                                  try {
+                                    const token = await refrescarTokenSiNecesario();
+                                    if (!token) return;
+
+                                    const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
+                                    const resp = await fetch(url);
+                                    if (!resp.ok) {
+                                      setSyncStatus("Error al leer Firebase (" + resp.status + ")");
+                                      return;
+                                    }
+
+                                    const remoto = await resp.json();
+
+                                    let terminalesFusionadas = Array.isArray(remoto?.Terminales) ? [...remoto.Terminales] : [];
+
+                                    if (remoto?.terminales_por_dispositivo && typeof remoto.terminales_por_dispositivo === "object") {
+                                      for (const [k, val] of Object.entries(remoto.terminales_por_dispositivo)) {
+                                        if (typeof val === "object" && val !== null) {
+                                          const idTerm = val.DeviceId || val.id || k;
+                                          const idx = terminalesFusionadas.findIndex(x => x.Id === idTerm);
+                                          const nombreEq = val.NombreEquipo || val.nombre || idTerm;
+                                          const plat = val.Plataforma ? ` (${val.Plataforma})` : "";
+                                          const rolDetectado = val.Rol || val.rol || (val.EsTrabajador || val.esTrabajador ? "Trabajador" : "Admin");
+                                          const permsRemotos = normalizarPermisosPersonalizados(val.PermisosPersonalizados || val.permisosPersonalizados);
+
+                                          if (idx >= 0) {
+                                            terminalesFusionadas[idx] = {
+                                              ...terminalesFusionadas[idx],
+                                              Nombre: `${nombreEq}${plat}`,
+                                              Rol: rolDetectado,
+                                              Activa: val.Activa !== undefined ? val.Activa !== false : (terminalesFusionadas[idx].Activa !== false),
+                                              PermisosPersonalizados: normalizarPermisosPersonalizados(val.PermisosPersonalizados || val.permisosPersonalizados || terminalesFusionadas[idx].PermisosPersonalizados)
+                                            };
+                                          } else {
+                                            terminalesFusionadas.push({
+                                              Id: idTerm,
+                                              Nombre: `${nombreEq}${plat}`,
+                                              Rol: rolDetectado,
+                                              SucursalId: remoto?.SucursalId || "Principal",
+                                              Activa: val.Activa !== false,
+                                              PermisosPersonalizados: permsRemotos,
+                                              FechaRegistro: val.FechaVinculacionUtc || new Date().toISOString()
+                                            });
+                                          }
+                                        }
+                                      }
+                                    }
+
+                                    const dispResp = await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKeyActual}.json?auth=${encodeURIComponent(token)}`);
+                                    if (dispResp.ok) {
+                                      const dispData = await dispResp.json();
+                                      if (dispData && typeof dispData === "object") {
+                                        for (const [k, val] of Object.entries(dispData)) {
+                                          if (typeof val === "object" && val !== null) {
+                                            const idTerm = val.id || k;
+                                            const idx = terminalesFusionadas.findIndex(x => x.Id === idTerm);
+                                            const rolDetectado = val.rol || val.Rol || (val.esTrabajador || val.EsTrabajador ? "Trabajador" : "Admin");
+                                            const permsDisp = normalizarPermisosPersonalizados(val.PermisosPersonalizados || val.permisosPersonalizados);
+                                            if (idx >= 0) {
+                                              terminalesFusionadas[idx] = {
+                                                ...terminalesFusionadas[idx],
+                                                Nombre: val.nombre || val.Nombre || terminalesFusionadas[idx].Nombre || idTerm,
+                                                Rol: rolDetectado,
+                                                Activa: val.activo !== undefined ? val.activo !== false : (val.Activa !== false),
+                                                PermisosPersonalizados: normalizarPermisosPersonalizados(val.PermisosPersonalizados || val.permisosPersonalizados || terminalesFusionadas[idx].PermisosPersonalizados)
+                                              };
+                                            } else {
+                                              terminalesFusionadas.push({
+                                                Id: idTerm,
+                                                Nombre: val.nombre || val.Nombre || `Dispositivo ${idTerm}`,
+                                                Rol: rolDetectado,
+                                                SucursalId: val.sucursalId || remoto?.SucursalId || "Principal",
+                                                Activa: val.activo !== undefined ? val.activo !== false : (val.Activa !== false),
+                                                PermisosPersonalizados: permsDisp,
+                                                FechaRegistro: val.fechaRegistro || new Date().toISOString()
+                                              });
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+
+                                    if (!remoto && terminalesFusionadas.length === 0) {
+                                      setSyncStatus("Sin datos previos en nube • Listo");
+                                      return;
+                                    }
+
+                                    const fechaRemota = Date.parse(remoto?.FechaActualizacion || 0) || 0;
+                                    const fechaLocal = Date.parse(estado.FechaActualizacion || 0) || 0;
+
+                                    if (fechaRemota > fechaLocal || forzarRender) {
+                                      estado = normalizarEstado({
+                                        ...(remoto || estado),
+                                        Terminales: terminalesFusionadas
+                                      });
+                                      actualizarEncabezadoAdmin();
+                                      renderTodo();
+                                    }
+
+                                    const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                                    setSyncStatus("Sincronizado • " + hora);
+                                  } catch (e) {
+                                    setSyncStatus("Sin conexión con Firebase");
+                                  } finally {
+                                    sincronizando = false;
+                                  }
+                                }
+
+                                function marcarCambioYSubir() {
+                                  estado.Uid = currentUser?.uid || estado.Uid;
+                                  estado.Email = currentUser?.email || estado.Email;
+                                  estado.FechaActualizacion = new Date().toISOString();
+                                  hayCambiosPendientes = true;
+                                  actualizarEncabezadoAdmin();
+                                  renderTodo();
+                                  subirCambios();
+                                }
+
+                                async function sincronizarDispositivosAutorizados() {
+                                  if (!currentUser || !userKeyActual) return;
+                                  try {
+                                    const token = await currentUser.getIdToken(false);
+                                    const mapaDisp = {};
+                                    const mapaTerminalesDisp = {};
+                                    for (const t of (estado.Terminales || [])) {
+                                      if (!t.Id) continue;
+                                      const esTrab = String(t.Rol || "").toLowerCase().includes("trab");
+                                      const perms = normalizarPermisosPersonalizados(t.PermisosPersonalizados);
+                                      mapaDisp[t.Id] = {
+                                        id: t.Id,
+                                        nombre: t.Nombre || t.Id,
+                                        rol: esTrab ? "Trabajador" : "Admin",
+                                        esTrabajador: esTrab,
+                                        activo: t.Activa !== false,
+                                        PermisosPersonalizados: perms
+                                      };
+                                      mapaTerminalesDisp[t.Id] = {
+                                        DeviceId: t.Id,
+                                        NombreEquipo: t.Nombre || t.Id,
+                                        Rol: esTrab ? "Trabajador" : "Admin",
+                                        EsTrabajador: esTrab,
+                                        Activa: t.Activa !== false,
+                                        PermisosPersonalizados: perms
+                                      };
+                                    }
+                                    await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKeyActual}.json?auth=${encodeURIComponent(token)}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify(mapaDisp)
+                                    });
+                                    await fetch(`${firebaseConfig.databaseURL}/usuarios/${userKeyActual}/terminales_por_dispositivo.json?auth=${encodeURIComponent(token)}`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify(mapaTerminalesDisp)
+                                    });
+                                  } catch (e) {
+                                    // Ignora error secundario
+                                  }
+                                }
+
+                                async function subirCambios() {
+                                  if (!currentUser || !userKeyActual) return;
+                                  sincronizando = true;
+                                  setSyncStatus("Subiendo cambios...");
+                                  try {
+                                    const token = await currentUser.getIdToken(true);
+                                    idTokenActual = token;
+                                    const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
+                                    const resp = await fetch(url, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify(estado)
+                                    });
+                                    await sincronizarDispositivosAutorizados();
+                                    if (resp.ok) {
+                                      hayCambiosPendientes = false;
+                                      const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                                      setSyncStatus("Guardado y sincronizado • " + hora);
+                                    } else {
+                                      setSyncStatus("Error al guardar en Firebase (" + resp.status + ")");
+                                    }
+                                  } catch (e) {
+                                    setSyncStatus("Cambio pendiente (sin red)");
+                                  } finally {
+                                    sincronizando = false;
+                                  }
+                                }
+
+                                // Navegación
+                                window.cambiarSeccion = function (sec) {
+                                  seccionActual = sec;
+                                  document.getElementById("tabAdmin").classList.toggle("active", sec === "Admin");
+                                  document.getElementById("tabCompras").classList.toggle("active", sec === "Compras");
+                                  document.getElementById("tabInventario").classList.toggle("active", sec === "Inventario");
+                                  document.getElementById("tabCorte").classList.toggle("active", sec === "Corte");
+
+                                  document.getElementById("secAdmin").classList.toggle("hidden", sec !== "Admin");
+                                  document.getElementById("secCompras").classList.toggle("hidden", sec !== "Compras");
+                                  document.getElementById("secInventario").classList.toggle("hidden", sec !== "Inventario");
+                                  document.getElementById("secCorte").classList.toggle("hidden", sec !== "Corte");
+
+                                  renderTodo();
+                                };
+
+                                function renderTodo() {
+                                  if (seccionActual === "Admin") renderAdmin();
+                                  else if (seccionActual === "Compras") renderCompras();
+                                  else if (seccionActual === "Inventario") renderInventario();
+                                  else if (seccionActual === "Corte") renderCorte();
+                                }
+
+                                function formatearStock(insumo) {
+                                  const stock = Number(insumo.StockActual) || 0;
+                                  const unidad = insumo.UnidadMedida || "Unidad";
+                                  return `${stock} ${unidad}`;
+                                }
+
+                                // ADMIN (Sincronizado por terminal con PermisosPersonalizados 0/1/2)
+                                window.renderAdmin = function () {
+                                  estado = normalizarEstado(estado);
+
+                                  const totalInsumos = (estado.Inventario || []).length;
+                                  const totalFacturas = (estado.Facturas || []).length;
+                                  const totalTerminales = (estado.Terminales || []).length;
+                                  const cantAdmin = (estado.Terminales || []).filter(t => !String(t.Rol || "").toLowerCase().includes("trab")).length;
+                                  const cantTrab = totalTerminales - cantAdmin;
+
+                                  document.getElementById("lblAdminResumenEstado").textContent =
+                                    `Admin: ${cantAdmin} • Trabajadores: ${cantTrab} • Total Terminales: ${totalTerminales} • Insumos: ${totalInsumos} • Facturas: ${totalFacturas}`;
+
+                                  const contTerm = document.getElementById("listaTerminalesAdmin");
+                                  if (!estado.Terminales.length) {
+                                    contTerm.innerHTML = `<div class="card-meta">No hay terminales registradas todavía. Usa "+ Registrar Terminal Actual" para agregar este equipo.</div>`;
+                                    return;
+                                  }
+
+                                  contTerm.innerHTML = estado.Terminales.map(t => {
+                                    const activa = t.Activa !== false;
+                                    const esTrabajador = String(t.Rol || "").toLowerCase().includes("trab");
+                                    const rolTexto = esTrabajador ? "Trabajador" : "Admin";
+                                    const perms = normalizarPermisosPersonalizados(t.PermisosPersonalizados);
+
+                                    const modosHtml = esTrabajador
+                                      ? MODULOS_PERMISO_TERMINAL.map(m => {
+                                          const modoActual = perms[m.modoKey];
+                                          return `
+                                            <button class="pill-btn ${modoActual === 0 ? "active" : ""}"
+                                                    type="button"
+                                                    onclick="ciclarModoPermisoTerminal('${escaparHtml(t.Id)}', '${m.modoKey}')">
+                                              ${escaparHtml(m.label)}: <strong>${etiquetaModo(modoActual)}</strong>
+                                            </button>
+                                          `;
+                                        }).join("")
+                                      : `<span class="card-meta">Perfil Admin: acceso completo habilitado en esta terminal.</span>`;
+
+                                    return `
+                                      <div class="list-row">
+                                        <div>
+                                          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                            <strong>${escaparHtml(t.Nombre || "Terminal")}</strong>
+                                            <span class="role-badge ${esTrabajador ? "role-worker" : "role-admin"}">${rolTexto}</span>
+                                            <span class="card-meta">ID: ${escaparHtml(t.Id || "")}</span>
+                                          </div>
+                                          <div class="card-meta">Sucursal: ${escaparHtml(t.SucursalId || estado.SucursalId)} • Estado: <strong>${activa ? "Activa" : "Desactivada"}</strong></div>
+                                          <div class="terminal-perms-grid">${modosHtml}</div>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                          <button class="btn btn-secondary" type="button" onclick="cambiarRolTerminalAdmin('${escaparHtml(t.Id)}')">Rol: ${rolTexto}</button>
+                                          <button class="btn ${activa ? "btn-warning" : "btn-success"}" type="button" onclick="toggleTerminalAdmin('${escaparHtml(t.Id)}')">${activa ? "Desactivar" : "Activar"}</button>
+                                          <button class="btn btn-danger" type="button" onclick="eliminarTerminalAdmin('${escaparHtml(t.Id)}')">Quitar</button>
+                                        </div>
+                                      </div>
+                                    `;
+                                  }).join("");
+                                };
+
+                                window.ciclarModoPermisoTerminal = function (id, claveModo) {
+                                  const term = (estado.Terminales || []).find(t => t.Id === id);
+                                  if (!term) return;
+                                  const perms = normalizarPermisosPersonalizados(term.PermisosPersonalizados);
+                                  const nuevoModo = siguienteModo(perms[claveModo]);
+                                  perms[claveModo] = nuevoModo;
+                                  term.PermisosPersonalizados = normalizarPermisosPersonalizados(perms);
+                                  marcarCambioYSubir();
+                                };
+
+                                window.cambiarRolTerminalAdmin = function (id) {
+                                  const term = (estado.Terminales || []).find(t => t.Id === id);
+                                  if (!term) return;
+                                  const esTrab = String(term.Rol || "").toLowerCase().includes("trab");
+                                  term.Rol = esTrab ? "Admin" : "Trabajador";
+                                  term.EsTrabajador = !esTrab;
+                                  marcarCambioYSubir();
+                                };
+
+                                window.registrarTerminalActual = function () {
+                                  const nombreSugerido = navigator.platform ? `Web (${navigator.platform})` : "Terminal Web";
+                                  const nombre = prompt("Nombre de esta terminal:", nombreSugerido);
+                                  if (nombre === null) return;
+
+                                  const rolInput = prompt("Rol de la terminal (Admin o Trabajador):", "Admin");
+                                  if (rolInput === null) return;
+                                  const rolNormalizado = rolInput.trim().toLowerCase().startsWith("trab") ? "Trabajador" : "Admin";
+
+                                  const devLocal = obtenerIdDispositivoLocal() || generarGuid().slice(0, 8).toUpperCase();
+                                  estado.Terminales = estado.Terminales || [];
+                                  estado.Terminales.unshift({
+                                    Id: devLocal,
+                                    Nombre: (nombre || nombreSugerido).trim(),
+                                    Rol: rolNormalizado,
+                                    EsTrabajador: rolNormalizado === "Trabajador",
+                                    SucursalId: estado.SucursalId || "Principal",
+                                    Activa: true,
+                                    PermisosPersonalizados: normalizarPermisosPersonalizados(null),
+                                    FechaRegistro: new Date().toISOString()
+                                  });
+                                  marcarCambioYSubir();
+                                };
+
+                                window.toggleTerminalAdmin = function (id) {
+                                  const term = (estado.Terminales || []).find(t => t.Id === id);
+                                  if (!term) return;
+                                  term.Activa = term.Activa === false ? true : false;
+                                  marcarCambioYSubir();
+                                };
+
+                                window.eliminarTerminalAdmin = function (id) {
+                                  if (!confirm("¿Deseas quitar esta terminal registrada?")) return;
+                                  estado.Terminales = (estado.Terminales || []).filter(t => t.Id !== id);
+                                  marcarCambioYSubir();
+                                };
+
+                                // COMPRAS
+                                window.renderCompras = function () {
+                                  const filtro = (document.getElementById("txtBuscarCompras").value || "").trim().toLowerCase();
+                                  const cont = document.getElementById("listaCompras");
+                                  const items = (estado.Inventario || []).filter(i =>
+                                    !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
+                                  );
+
+                                  if (items.length === 0) {
+                                    cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos para mostrar.</div></div>`;
+                                    return;
+                                  }
+
+                                  cont.innerHTML = items.map(i => {
+                                    const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
+                                    return `
+                                    <div class="card">
+                                      <div>
+                                        <div class="card-title">${escaparHtml(i.Nombre)}</div>
+                                        <div class="card-meta">Stock actual: <strong>${escaparHtml(formatearStock(i))}</strong></div>
+                                        <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
+                                      </div>
+                                      <div class="card-actions">
+                                        <button class="btn btn-success" type="button" onclick="abrirModalRestock('${i.Id}')">Reabastecer</button>
+                                      </div>
+                                    </div>
+                                  `;
+                                  }).join("");
+                                };
+
+                                window.abrirModalRestock = function (id) {
+                                  const insumo = (estado.Inventario || []).find(i => i.Id === id);
+                                  if (!insumo) return;
+
+                                  idRestockActual = insumo.Id;
+                                  restockModoMayor = false;
+
+                                  document.getElementById("restockTitulo").textContent = "Reabastecer: " + insumo.Nombre;
+                                  document.getElementById("txtRestockCantidad").value = "";
+                                  document.getElementById("txtRestockCosto").value = "";
+
+                                  const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
+                                  const modoBox = document.getElementById("restockModoBox");
+                                  const factorBox = document.getElementById("restockFactorBox");
+
+                                  if (insumo.ManejaPorciones) {
+                                    modoBox.classList.remove("hidden");
+                                    document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
+                                    document.getElementById("btnRestockModo1").textContent = `Peso (${insumo.UnidadMedida})`;
+                                    document.getElementById("btnRestockModo2").textContent = "Unidades (Piezas)";
+                                    document.getElementById("restockFactorLabel").textContent = "¿Cuántas piezas trae este kilo (o proporción)?";
+                                    document.getElementById("txtRestockFactor").value = insumo.PorcionesPorKilo || 0;
+                                  } else if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
+                                    modoBox.classList.remove("hidden");
+                                    document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
+                                    document.getElementById("btnRestockModo1").textContent = `Unidades sueltas (${insumo.UnidadMedida})`;
+                                    document.getElementById("btnRestockModo2").textContent = `Paquetes (habitual: ${insumo.UnidadesPorEmpaque})`;
+                                    document.getElementById("restockFactorLabel").textContent = "Unidades por paquete";
+                                    document.getElementById("txtRestockFactor").value = insumo.UnidadesPorEmpaque || 1;
+                                  } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
+                                    modoBox.classList.remove("hidden");
+                                    document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
+                                    document.getElementById("btnRestockModo1").textContent = "Gramos (g)";
+                                    document.getElementById("btnRestockModo2").textContent = "Kilogramos (kg)";
+                                  } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
+                                    modoBox.classList.remove("hidden");
+                                    document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
+                                    document.getElementById("btnRestockModo1").textContent = "Mililitros (ml)";
+                                    document.getElementById("btnRestockModo2").textContent = "Litros (L)";
                                   } else {
-                                    terminalesFusionadas.push({
-                                      Id: idTerm,
-                                      Nombre: `${nombreEq}${plat}`,
-                                      Rol: rolDetectado,
-                                      SucursalId: remoto?.SucursalId || "Principal",
-                                      Activa: val.Activa !== false,
-                                      Permisos: permDetectados,
-                                      FechaRegistro: val.FechaVinculacionUtc || new Date().toISOString()
+                                    modoBox.classList.add("hidden");
+                                  }
+
+                                  factorBox.classList.add("hidden");
+                                  actualizarEstilosRestockModo(insumo);
+                                  document.getElementById("modalRestock").classList.remove("hidden");
+                                };
+
+                                window.setRestockModoMayor = function (esMayor) {
+                                  restockModoMayor = esMayor;
+                                  const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
+                                  if (insumo) actualizarEstilosRestockModo(insumo);
+                                };
+
+                                function actualizarEstilosRestockModo(insumo) {
+                                  document.getElementById("btnRestockModo1").classList.toggle("active", !restockModoMayor);
+                                  document.getElementById("btnRestockModo2").classList.toggle("active", restockModoMayor);
+
+                                  const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
+                                  const factorBox = document.getElementById("restockFactorBox");
+
+                                  if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
+                                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                                      ? "Cantidad de paquetes a sumar:"
+                                      : `Cantidad de ${insumo.UnidadMedida} sueltas a sumar:`;
+                                    factorBox.classList.toggle("hidden", !restockModoMayor);
+                                  } else if (insumo.ManejaPorciones) {
+                                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                                      ? "Cantidad de unidades (piezas) a sumar:"
+                                      : `Cantidad a sumar (${insumo.UnidadMedida}):`;
+                                    factorBox.classList.toggle("hidden", !restockModoMayor);
+                                  } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
+                                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                                      ? "Cantidad a sumar (Kilogramos):"
+                                      : "Cantidad a sumar (Gramos):";
+                                    factorBox.classList.add("hidden");
+                                  } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
+                                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                                      ? "Cantidad a sumar (Litros):"
+                                      : "Cantidad a sumar (Mililitros):";
+                                    factorBox.classList.add("hidden");
+                                  } else {
+                                    document.getElementById("lblRestockCantidad").textContent = `Cantidad a sumar al Stock (${insumo.UnidadMedida}):`;
+                                    factorBox.classList.add("hidden");
+                                  }
+                                }
+
+                                window.cerrarModalRestock = function () {
+                                  document.getElementById("modalRestock").classList.add("hidden");
+                                  idRestockActual = null;
+                                };
+
+                                window.guardarRestock = function () {
+                                  const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
+                                  if (!insumo) return;
+
+                                  const cantIngresada = parseFloat(document.getElementById("txtRestockCantidad").value);
+                                  if (isNaN(cantIngresada) || cantIngresada <= 0) {
+                                    alert("Ingresa una cantidad válida a sumar.");
+                                    return;
+                                  }
+
+                                  let costoCompra = parseFloat(document.getElementById("txtRestockCosto").value);
+                                  if (isNaN(costoCompra) || costoCompra < 0) costoCompra = 0;
+
+                                  let cantReal = cantIngresada;
+                                  const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
+
+                                  if (restockModoMayor) {
+                                    const factorVal = parseFloat(document.getElementById("txtRestockFactor").value);
+                                    if (insumo.ManejaEmpaque) {
+                                      const porPaquete = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.UnidadesPorEmpaque) || 1);
+                                      cantReal = cantIngresada * porPaquete;
+                                    } else if (insumo.ManejaPorciones) {
+                                      const piezasPorKilo = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.PorcionesPorKilo) || 10);
+                                      const gramosPorUnidad = piezasPorKilo > 0 ? (1000 / piezasPorKilo) : 100;
+                                      cantReal = cantIngresada * gramosPorUnidad;
+                                    } else if (uLower.includes("gramo") || uLower.includes("kilo") || uLower.includes("mililitro") || uLower.includes("litro")) {
+                                      cantReal = cantIngresada * 1000;
+                                    }
+                                  }
+
+                                  const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
+                                  const { valorStockActual: costoTotalAnterior } = obtenerMetricasCostoActual(insumo);
+
+                                  const nuevoStockTotal = stockAnterior + cantReal;
+                                  const nuevoCostoTotalInventario = costoTotalAnterior + costoCompra;
+
+                                  insumo.StockActual = nuevoStockTotal;
+                                  insumo.CostoIngresado = nuevoCostoTotalInventario;
+                                  insumo.EsCostoTotal = true;
+
+                                  if (costoCompra > 0) {
+                                    registrarGastoInterno("Compra: " + insumo.Nombre, costoCompra);
+                                  }
+
+                                  cerrarModalRestock();
+                                  marcarCambioYSubir();
+                                };
+
+                                // INVENTARIO
+                                window.renderInventario = function () {
+                                  const filtro = (document.getElementById("txtBuscarInventario").value || "").trim().toLowerCase();
+                                  const cont = document.getElementById("listaInventario");
+                                  const items = (estado.Inventario || []).filter(i =>
+                                    !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
+                                  );
+
+                                  if (items.length === 0) {
+                                    cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos registrados.</div></div>`;
+                                    return;
+                                  }
+
+                                  cont.innerHTML = items.map(i => {
+                                    const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
+                                    return `
+                                    <div class="card">
+                                      <div>
+                                        <div class="card-title">${escaparHtml(i.Nombre)}</div>
+                                        <div class="card-meta">Stock: <strong>${escaparHtml(formatearStock(i))}</strong></div>
+                                        <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
+                                      </div>
+                                      <div class="card-actions">
+                                        <button class="btn" type="button" onclick="abrirModalEditarInsumo('${i.Id}')">Editar</button>
+                                        <button class="btn btn-warning" type="button" onclick="abrirModalMerma('${i.Id}')">Merma</button>
+                                        <button class="btn btn-danger" type="button" onclick="eliminarInsumo('${i.Id}')">Eliminar</button>
+                                      </div>
+                                    </div>
+                                  `;
+                                  }).join("");
+                                };
+
+                                window.abrirModalNuevoInsumo = function (origen) {
+                                  origenModalInsumo = origen || "Inventario";
+                                  idInsumoEditando = null;
+                                  document.getElementById("insumoModalTitulo").textContent = origen === "Compra" ? "Registrar Compra / Insumo" : "Registrar Insumo";
+                                  document.getElementById("txtInsumoNombre").value = "";
+                                  document.getElementById("txtInsumoStock").value = "";
+                                  document.getElementById("txtUnidadesEmpaque").value = "";
+                                  document.getElementById("txtPorcionesKilo").value = "";
+                                  document.getElementById("txtInsumoCosto").value = "";
+
+                                  setModoPesoForm(false);
+                                  setEsCostoTotalForm(true);
+                                  setUnidadForm("Unidad");
+                                  document.getElementById("modalInsumo").classList.remove("hidden");
+                                };
+
+                                window.abrirModalEditarInsumo = function (id) {
+                                  const insumo = (estado.Inventario || []).find(i => i.Id === id);
+                                  if (!insumo) return;
+
+                                  origenModalInsumo = "Inventario";
+                                  idInsumoEditando = insumo.Id;
+                                  document.getElementById("insumoModalTitulo").textContent = "Modificar Insumo";
+                                  document.getElementById("txtInsumoNombre").value = insumo.Nombre || "";
+                                  document.getElementById("txtInsumoStock").value = insumo.StockActual ?? 0;
+                                  document.getElementById("txtUnidadesEmpaque").value = Number(insumo.UnidadesPorEmpaque) > 1 ? insumo.UnidadesPorEmpaque : "";
+                                  document.getElementById("txtPorcionesKilo").value = Number(insumo.PorcionesPorKilo) > 0 ? insumo.PorcionesPorKilo : "";
+                                  document.getElementById("txtInsumoCosto").value = insumo.CostoIngresado ?? 0;
+
+                                  setModoPesoForm(Boolean(insumo.ManejaPorciones));
+                                  setEsCostoTotalForm(insumo.EsCostoTotal !== false);
+                                  setUnidadForm(insumo.UnidadMedida || "Unidad");
+                                  document.getElementById("modalInsumo").classList.remove("hidden");
+                                };
+
+                                window.setModoPesoForm = function (esPeso) {
+                                  esModoPesoForm = esPeso;
+                                  document.getElementById("btnTipoUnitario").classList.toggle("active", !esPeso);
+                                  document.getElementById("btnTipoPeso").classList.toggle("active", esPeso);
+                                  document.getElementById("boxEmpaqueForm").classList.toggle("hidden", esPeso);
+                                  document.getElementById("boxPorcionesForm").classList.toggle("hidden", !esPeso);
+                                  document.getElementById("lblInsumoStock").textContent = esPeso ? "Cantidad (Kilos / Litros):" : "Cantidad:";
+                                };
+
+                                window.setUnidadForm = function (unidad) {
+                                  unidadFormSeleccionada = unidad;
+                                  document.querySelectorAll(".unidad-btn").forEach(btn => {
+                                    btn.classList.toggle("active", btn.dataset.unidad === unidad);
+                                  });
+                                };
+
+                                window.setEsCostoTotalForm = function (esTotal) {
+                                  esCostoTotalForm = esTotal;
+                                  document.getElementById("btnCostoTotal").classList.toggle("active", esTotal);
+                                  document.getElementById("btnCostoUnit").classList.toggle("active", !esTotal);
+                                  document.getElementById("lblInsumoCosto").textContent = esTotal ? "Valor ingresado ($):" : "Costo unitario ($):";
+                                };
+
+                                window.cerrarModalInsumo = function () {
+                                  document.getElementById("modalInsumo").classList.add("hidden");
+                                  idInsumoEditando = null;
+                                };
+
+                                window.guardarInsumoModal = function () {
+                                  const nombre = (document.getElementById("txtInsumoNombre").value || "").trim();
+                                  if (!nombre) {
+                                    alert("Debes ingresar un nombre para el insumo.");
+                                    return;
+                                  }
+
+                                  const stock = parseFloat(document.getElementById("txtInsumoStock").value) || 0;
+                                  const costo = parseFloat(document.getElementById("txtInsumoCosto").value) || 0;
+                                  const unidadesPaquete = parseFloat(document.getElementById("txtUnidadesEmpaque").value) || 1;
+                                  const porciones = parseFloat(document.getElementById("txtPorcionesKilo").value) || 0;
+
+                                  const manejaEmpaque = !esModoPesoForm && unidadesPaquete > 1;
+                                  const manejaPorciones = esModoPesoForm && porciones > 0;
+                                  const stockReal = manejaEmpaque && unidadesPaquete > 1 ? stock * unidadesPaquete : stock;
+
+                                  if (!idInsumoEditando) {
+                                    estado.Inventario.push({
+                                      Id: generarGuid(),
+                                      Nombre: nombre,
+                                      StockActual: stockReal,
+                                      UnidadMedida: unidadFormSeleccionada,
+                                      CostoIngresado: costo,
+                                      EsCostoTotal: esCostoTotalForm,
+                                      ManejaPorciones: manejaPorciones,
+                                      PorcionesPorKilo: porciones,
+                                      ManejaEmpaque: manejaEmpaque,
+                                      UnidadesPorEmpaque: unidadesPaquete
+                                    });
+
+                                    if (costo > 0) {
+                                      const montoGasto = esCostoTotalForm ? costo : (costo * stock);
+                                      registrarGastoInterno(origenModalInsumo === "Compra" ? "Compra: " + nombre : nombre, montoGasto);
+                                    }
+                                  } else {
+                                    const insumo = estado.Inventario.find(i => i.Id === idInsumoEditando);
+                                    if (insumo) {
+                                      insumo.Nombre = nombre;
+                                      insumo.StockActual = stockReal;
+                                      insumo.UnidadMedida = unidadFormSeleccionada;
+                                      insumo.CostoIngresado = costo;
+                                      insumo.EsCostoTotal = esCostoTotalForm;
+                                      insumo.ManejaPorciones = manejaPorciones;
+                                      insumo.PorcionesPorKilo = porciones;
+                                      insumo.ManejaEmpaque = manejaEmpaque;
+                                      insumo.UnidadesPorEmpaque = unidadesPaquete;
+                                    }
+                                  }
+
+                                  cerrarModalInsumo();
+                                  marcarCambioYSubir();
+                                };
+
+                                window.eliminarInsumo = function (id) {
+                                  if (!confirm("¿Deseas eliminar este insumo?")) return;
+                                  estado.Inventario = (estado.Inventario || []).filter(i => i.Id !== id);
+                                  marcarCambioYSubir();
+                                };
+
+                                // MERMA
+                                window.abrirModalMerma = function (id) {
+                                  const insumo = (estado.Inventario || []).find(i => i.Id === id);
+                                  if (!insumo) return;
+                                  idMermaActual = insumo.Id;
+                                  document.getElementById("mermaTitulo").textContent = "Merma: " + insumo.Nombre;
+                                  document.getElementById("mermaInfo").textContent = `Stock actual: ${formatearStock(insumo)}`;
+                                  document.getElementById("txtMermaCantidad").value = "";
+                                  document.getElementById("txtMermaMonto").value = "0";
+                                  document.getElementById("modalMerma").classList.remove("hidden");
+                                };
+
+                                window.cerrarModalMerma = function () {
+                                  document.getElementById("modalMerma").classList.add("hidden");
+                                  idMermaActual = null;
+                                };
+
+                                window.guardarMerma = function () {
+                                  const insumo = (estado.Inventario || []).find(i => i.Id === idMermaActual);
+                                  if (!insumo) return;
+
+                                  const cantMerma = parseFloat(document.getElementById("txtMermaCantidad").value);
+                                  if (isNaN(cantMerma) || cantMerma <= 0) {
+                                    alert("Ingresa una cantidad mayor a cero.");
+                                    return;
+                                  }
+
+                                  const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
+                                  const { costoUnitarioPromedio } = obtenerMetricasCostoActual(insumo);
+                                  const stockDescontado = Math.min(stockAnterior, cantMerma);
+                                  const nuevoStock = Math.max(0, stockAnterior - cantMerma);
+
+                                  insumo.StockActual = nuevoStock;
+                                  if (insumo.EsCostoTotal !== false) {
+                                    insumo.CostoIngresado = Math.max(0, (Number(insumo.CostoIngresado) || 0) - (stockDescontado * costoUnitarioPromedio));
+                                  }
+
+                                  const montoMerma = parseFloat(document.getElementById("txtMermaMonto").value) || 0;
+                                  if (montoMerma > 0) {
+                                    trasladarCompraAMermaInterno(insumo.Nombre, montoMerma);
+                                  }
+
+                                  cerrarModalMerma();
+                                  marcarCambioYSubir();
+                                };
+
+                                function trasladarCompraAMermaInterno(conceptoInsumo, montoMerma) {
+                                  if (montoMerma <= 0) return;
+                                  const nombreLimpio = (conceptoInsumo || "").trim();
+                                  const conceptoCompra = "Compra: " + nombreLimpio;
+
+                                  const compraReciente = (estado.Gastos || []).find(g =>
+                                    Number(g.Monto) > 0 &&
+                                    ((g.Concepto || "").toLowerCase() === conceptoCompra.toLowerCase() ||
+                                     (g.Concepto || "").toLowerCase() === nombreLimpio.toLowerCase())
+                                  );
+
+                                  let montoTrasladado = montoMerma;
+                                  if (compraReciente) {
+                                    const montoCompraActual = Number(compraReciente.Monto) || 0;
+                                    if (montoCompraActual > montoMerma) {
+                                      compraReciente.Monto = Math.round((montoCompraActual - montoMerma) * 100) / 100;
+                                    } else {
+                                      montoTrasladado = montoCompraActual;
+                                      estado.Gastos = estado.Gastos.filter(g => g.Id !== compraReciente.Id);
+                                    }
+                                  }
+
+                                  if (montoTrasladado > 0) {
+                                    const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
+                                    estado.Gastos.unshift({
+                                      Id: generarGuid(),
+                                      TurnoId: turno.Id,
+                                      FechaOperativa: turno.FechaOperativa,
+                                      FechaHoraRegistro: new Date().toISOString(),
+                                      Concepto: nombreLimpio ? "Merma: " + nombreLimpio : "Merma",
+                                      Monto: montoTrasladado
                                     });
                                   }
                                 }
-                              }
-                            }
 
-                            const dispResp = await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKeyActual}.json?auth=${encodeURIComponent(token)}`);
-                            if (dispResp.ok) {
-                              const dispData = await dispResp.json();
-                              if (dispData && typeof dispData === "object") {
-                                for (const [k, val] of Object.entries(dispData)) {
-                                  if (typeof val === "object" && val !== null) {
-                                    const idTerm = val.id || k;
-                                    const idx = terminalesFusionadas.findIndex(x => x.Id === idTerm);
-                                    const rolDetectado = val.rol || val.Rol || (val.esTrabajador || val.EsTrabajador ? "Trabajador" : "Admin");
-                                    const permDetectados = normalizarPermisos(val.permisos || val.Permisos || remoto?.Permisos);
-                                    if (idx >= 0) {
-                                      terminalesFusionadas[idx] = {
-                                        ...terminalesFusionadas[idx],
-                                        Nombre: val.nombre || val.Nombre || terminalesFusionadas[idx].Nombre || idTerm,
-                                        Rol: rolDetectado,
-                                        Activa: val.activo !== undefined ? val.activo !== false : (val.Activa !== false),
-                                        Permisos: normalizarPermisos(terminalesFusionadas[idx].Permisos || permDetectados)
-                                      };
-                                    } else {
-                                      terminalesFusionadas.push({
-                                        Id: idTerm,
-                                        Nombre: val.nombre || val.Nombre || `Dispositivo ${idTerm}`,
-                                        Rol: rolDetectado,
-                                        SucursalId: val.sucursalId || remoto?.SucursalId || "Principal",
-                                        Activa: val.activo !== undefined ? val.activo !== false : (val.Activa !== false),
-                                        Permisos: permDetectados,
-                                        FechaRegistro: val.fechaRegistro || new Date().toISOString()
-                                      });
-                                    }
+                                // CORTE DE CAJA
+                                function obtenerFechaOperativa(fechaObj) {
+                                  const f = new Date(fechaObj);
+                                  if (f.getHours() < 6) {
+                                    f.setDate(f.getDate() - 1);
                                   }
+                                  return f.toISOString().slice(0, 10) + "T00:00:00";
                                 }
-                              }
-                            }
 
-                            if (!remoto && terminalesFusionadas.length === 0) {
-                              setSyncStatus("Sin datos previos en nube • Listo");
-                              return;
-                            }
-
-                            const fechaRemota = Date.parse(remoto?.FechaActualizacion || 0) || 0;
-                            const fechaLocal = Date.parse(estado.FechaActualizacion || 0) || 0;
-
-                            if (fechaRemota > fechaLocal || forzarRender) {
-                              estado = normalizarEstado({
-                                ...(remoto || estado),
-                                Terminales: terminalesFusionadas
-                              });
-                              actualizarEncabezadoAdmin();
-                              renderTodo();
-                            }
-
-                            const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-                            setSyncStatus("Sincronizado • " + hora);
-                          } catch (e) {
-                            setSyncStatus("Sin conexión con Firebase");
-                          } finally {
-                            sincronizando = false;
-                          }
-                        }
-
-                        function marcarCambioYSubir() {
-                          estado.Uid = currentUser?.uid || estado.Uid;
-                          estado.Email = currentUser?.email || estado.Email;
-                          estado.FechaActualizacion = new Date().toISOString();
-                          hayCambiosPendientes = true;
-                          actualizarEncabezadoAdmin();
-                          renderTodo();
-                          subirCambios();
-                        }
-
-                        async function sincronizarDispositivosAutorizados() {
-                          if (!currentUser || !userKeyActual) return;
-                          try {
-                            const token = await currentUser.getIdToken(false);
-                            const mapaDisp = {};
-                            const mapaTerminalesDisp = {};
-                            for (const t of (estado.Terminales || [])) {
-                              if (!t.Id) continue;
-                              const esTrab = String(t.Rol || "").toLowerCase().includes("trab");
-                              const perms = normalizarPermisos(t.Permisos);
-                              mapaDisp[t.Id] = {
-                                id: t.Id,
-                                nombre: t.Nombre || t.Id,
-                                rol: esTrab ? "Trabajador" : "Admin",
-                                esTrabajador: esTrab,
-                                activo: t.Activa !== false,
-                                permisos: perms
-                              };
-                              mapaTerminalesDisp[t.Id] = {
-                                DeviceId: t.Id,
-                                NombreEquipo: t.Nombre || t.Id,
-                                Rol: esTrab ? "Trabajador" : "Admin",
-                                EsTrabajador: esTrab,
-                                Activa: t.Activa !== false,
-                                Permisos: perms
-                              };
-                            }
-                            await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKeyActual}.json?auth=${encodeURIComponent(token)}`, {
-                              method: "PUT",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify(mapaDisp)
-                            });
-                            await fetch(`${firebaseConfig.databaseURL}/usuarios/${userKeyActual}/terminales_por_dispositivo.json?auth=${encodeURIComponent(token)}`, {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify(mapaTerminalesDisp)
-                            });
-                          } catch (e) {
-                            // Ignora error secundario
-                          }
-                        }
-
-                        async function subirCambios() {
-                          if (!currentUser || !userKeyActual) return;
-                          sincronizando = true;
-                          setSyncStatus("Subiendo cambios...");
-                          try {
-                            const token = await currentUser.getIdToken(true);
-                            idTokenActual = token;
-                            const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
-                            const resp = await fetch(url, {
-                              method: "PUT",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify(estado)
-                            });
-                            await sincronizarDispositivosAutorizados();
-                            if (resp.ok) {
-                              hayCambiosPendientes = false;
-                              const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-                              setSyncStatus("Guardado y sincronizado • " + hora);
-                            } else {
-                              setSyncStatus("Error al guardar en Firebase (" + resp.status + ")");
-                            }
-                          } catch (e) {
-                            setSyncStatus("Cambio pendiente (sin red)");
-                          } finally {
-                            sincronizando = false;
-                          }
-                        }
-
-                        // Navegación
-                        window.cambiarSeccion = function (sec) {
-                          seccionActual = sec;
-                          document.getElementById("tabAdmin").classList.toggle("active", sec === "Admin");
-                          document.getElementById("tabCompras").classList.toggle("active", sec === "Compras");
-                          document.getElementById("tabInventario").classList.toggle("active", sec === "Inventario");
-                          document.getElementById("tabCorte").classList.toggle("active", sec === "Corte");
-
-                          document.getElementById("secAdmin").classList.toggle("hidden", sec !== "Admin");
-                          document.getElementById("secCompras").classList.toggle("hidden", sec !== "Compras");
-                          document.getElementById("secInventario").classList.toggle("hidden", sec !== "Inventario");
-                          document.getElementById("secCorte").classList.toggle("hidden", sec !== "Corte");
-
-                          renderTodo();
-                        };
-
-                        function renderTodo() {
-                          if (seccionActual === "Admin") renderAdmin();
-                          else if (seccionActual === "Compras") renderCompras();
-                          else if (seccionActual === "Inventario") renderInventario();
-                          else if (seccionActual === "Corte") renderCorte();
-                        }
-
-                        function formatearStock(insumo) {
-                          const stock = Number(insumo.StockActual) || 0;
-                          const unidad = insumo.UnidadMedida || "Unidad";
-                          return `${stock} ${unidad}`;
-                        }
-
-                        // ADMIN
-                        window.renderAdmin = function () {
-                          estado = normalizarEstado(estado);
-
-                          document.getElementById("chkPermEliminarFactura").checked = estado.Permisos.PermitirEliminarFactura !== false;
-                          document.getElementById("chkPermMerma").checked = estado.Permisos.PermitirMerma !== false;
-                          document.getElementById("chkPermCerrarTurno").checked = estado.Permisos.PermitirCerrarTurno !== false;
-                          document.getElementById("chkPermEditarInventario").checked = estado.Permisos.PermitirEditarInventario !== false;
-
-                          const totalInsumos = (estado.Inventario || []).length;
-                          const totalFacturas = (estado.Facturas || []).length;
-                          const totalTerminales = (estado.Terminales || []).length;
-                          const cantAdmin = (estado.Terminales || []).filter(t => !String(t.Rol || "").toLowerCase().includes("trab")).length;
-                          const cantTrab = totalTerminales - cantAdmin;
-
-                          document.getElementById("lblAdminResumenEstado").textContent =
-                            `Admin: ${cantAdmin} • Trabajadores: ${cantTrab} • Total Terminales: ${totalTerminales} • Insumos: ${totalInsumos} • Facturas: ${totalFacturas}`;
-
-                          const contTerm = document.getElementById("listaTerminalesAdmin");
-                          if (!estado.Terminales.length) {
-                            contTerm.innerHTML = `<div class="card-meta">No hay terminales registradas todavía. Usa "+ Registrar Terminal Actual" para agregar este equipo.</div>`;
-                            return;
-                          }
-
-                          contTerm.innerHTML = estado.Terminales.map(t => {
-                            const activa = t.Activa !== false;
-                            const esTrabajador = String(t.Rol || "").toLowerCase().includes("trab");
-                            const rolTexto = esTrabajador ? "Trabajador" : "Admin";
-                            const perms = normalizarPermisos(t.Permisos || estado.Permisos);
-
-                            const checksHtml = PERMISOS_TERMINAL_KEYS.map(p => `
-                              <label class="perm-chip">
-                                <input type="checkbox"
-                                       ${perms[p.key] !== false ? "checked" : ""}
-                                       onchange="actualizarPermisoTerminal('${escaparHtml(t.Id)}', '${p.key}', this.checked)" />
-                                <span>${escaparHtml(p.label)}</span>
-                              </label>
-                            `).join("");
-
-                            return `
-                              <div class="list-row">
-                                <div>
-                                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                    <strong>${escaparHtml(t.Nombre || "Terminal")}</strong>
-                                    <span class="role-badge ${esTrabajador ? "role-worker" : "role-admin"}">${rolTexto}</span>
-                                    <span class="card-meta">ID: ${escaparHtml(t.Id || "")}</span>
-                                  </div>
-                                  <div class="card-meta">Sucursal: ${escaparHtml(t.SucursalId || estado.SucursalId)} • Estado: <strong>${activa ? "Activa" : "Desactivada"}</strong></div>
-                                  <div class="terminal-perms-grid">${checksHtml}</div>
-                                </div>
-                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                  <button class="btn btn-secondary" type="button" onclick="cambiarRolTerminalAdmin('${escaparHtml(t.Id)}')">Rol: ${rolTexto}</button>
-                                  <button class="btn ${activa ? "btn-warning" : "btn-success"}" type="button" onclick="toggleTerminalAdmin('${escaparHtml(t.Id)}')">${activa ? "Desactivar" : "Activar"}</button>
-                                  <button class="btn btn-danger" type="button" onclick="eliminarTerminalAdmin('${escaparHtml(t.Id)}')">Quitar</button>
-                                </div>
-                              </div>
-                            `;
-                          }).join("");
-                        };
-
-                        window.actualizarPermisoAdmin = function (clave, valor) {
-                          estado.Permisos = normalizarPermisos(estado.Permisos);
-                          estado.Permisos[clave] = Boolean(valor);
-                          marcarCambioYSubir();
-                        };
-
-                        window.actualizarPermisoTerminal = function (id, clavePermiso, valor) {
-                          const term = (estado.Terminales || []).find(t => t.Id === id);
-                          if (!term) return;
-                          term.Permisos = normalizarPermisos(term.Permisos || estado.Permisos);
-                          term.Permisos[clavePermiso] = Boolean(valor);
-                          marcarCambioYSubir();
-                        };
-
-                        window.cambiarRolTerminalAdmin = function (id) {
-                          const term = (estado.Terminales || []).find(t => t.Id === id);
-                          if (!term) return;
-                          const esTrab = String(term.Rol || "").toLowerCase().includes("trab");
-                          term.Rol = esTrab ? "Admin" : "Trabajador";
-                          term.EsTrabajador = !esTrab;
-                          marcarCambioYSubir();
-                        };
-
-                        window.registrarTerminalActual = function () {
-                          const nombreSugerido = navigator.platform ? `Web (${navigator.platform})` : "Terminal Web";
-                          const nombre = prompt("Nombre de esta terminal:", nombreSugerido);
-                          if (nombre === null) return;
-
-                          const rolInput = prompt("Rol de la terminal (Admin o Trabajador):", "Admin");
-                          if (rolInput === null) return;
-                          const rolNormalizado = rolInput.trim().toLowerCase().startsWith("trab") ? "Trabajador" : "Admin";
-
-                          const devLocal = obtenerIdDispositivoLocal() || generarGuid().slice(0, 8).toUpperCase();
-                          estado.Terminales = estado.Terminales || [];
-                          estado.Terminales.unshift({
-                            Id: devLocal,
-                            Nombre: (nombre || nombreSugerido).trim(),
-                            Rol: rolNormalizado,
-                            EsTrabajador: rolNormalizado === "Trabajador",
-                            SucursalId: estado.SucursalId || "Principal",
-                            Activa: true,
-                            Permisos: normalizarPermisos(estado.Permisos),
-                            FechaRegistro: new Date().toISOString()
-                          });
-                          marcarCambioYSubir();
-                        };
-
-                        window.toggleTerminalAdmin = function (id) {
-                          const term = (estado.Terminales || []).find(t => t.Id === id);
-                          if (!term) return;
-                          term.Activa = term.Activa === false ? true : false;
-                          marcarCambioYSubir();
-                        };
-
-                        window.eliminarTerminalAdmin = function (id) {
-                          if (!confirm("¿Deseas quitar esta terminal registrada?")) return;
-                          estado.Terminales = (estado.Terminales || []).filter(t => t.Id !== id);
-                          marcarCambioYSubir();
-                        };
-
-                        // COMPRAS
-                        window.renderCompras = function () {
-                          const filtro = (document.getElementById("txtBuscarCompras").value || "").trim().toLowerCase();
-                          const cont = document.getElementById("listaCompras");
-                          const items = (estado.Inventario || []).filter(i =>
-                            !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
-                          );
-
-                          if (items.length === 0) {
-                            cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos para mostrar.</div></div>`;
-                            return;
-                          }
-
-                          cont.innerHTML = items.map(i => {
-                            const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
-                            return `
-                            <div class="card">
-                              <div>
-                                <div class="card-title">${escaparHtml(i.Nombre)}</div>
-                                <div class="card-meta">Stock actual: <strong>${escaparHtml(formatearStock(i))}</strong></div>
-                                <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
-                              </div>
-                              <div class="card-actions">
-                                <button class="btn btn-success" type="button" onclick="abrirModalRestock('${i.Id}')">Reabastecer</button>
-                              </div>
-                            </div>
-                          `;
-                          }).join("");
-                        };
-
-                        window.abrirModalRestock = function (id) {
-                          const insumo = (estado.Inventario || []).find(i => i.Id === id);
-                          if (!insumo) return;
-
-                          idRestockActual = insumo.Id;
-                          restockModoMayor = false;
-
-                          document.getElementById("restockTitulo").textContent = "Reabastecer: " + insumo.Nombre;
-                          document.getElementById("txtRestockCantidad").value = "";
-                          document.getElementById("txtRestockCosto").value = "";
-
-                          const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
-                          const modoBox = document.getElementById("restockModoBox");
-                          const factorBox = document.getElementById("restockFactorBox");
-
-                          if (insumo.ManejaPorciones) {
-                            modoBox.classList.remove("hidden");
-                            document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
-                            document.getElementById("btnRestockModo1").textContent = `Peso (${insumo.UnidadMedida})`;
-                            document.getElementById("btnRestockModo2").textContent = "Unidades (Piezas)";
-                            document.getElementById("restockFactorLabel").textContent = "¿Cuántas piezas trae este kilo (o proporción)?";
-                            document.getElementById("txtRestockFactor").value = insumo.PorcionesPorKilo || 0;
-                          } else if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
-                            modoBox.classList.remove("hidden");
-                            document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
-                            document.getElementById("btnRestockModo1").textContent = `Unidades sueltas (${insumo.UnidadMedida})`;
-                            document.getElementById("btnRestockModo2").textContent = `Paquetes (habitual: ${insumo.UnidadesPorEmpaque})`;
-                            document.getElementById("restockFactorLabel").textContent = "Unidades por paquete";
-                            document.getElementById("txtRestockFactor").value = insumo.UnidadesPorEmpaque || 1;
-                          } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
-                            modoBox.classList.remove("hidden");
-                            document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
-                            document.getElementById("btnRestockModo1").textContent = "Gramos (g)";
-                            document.getElementById("btnRestockModo2").textContent = "Kilogramos (kg)";
-                          } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
-                            modoBox.classList.remove("hidden");
-                            document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
-                            document.getElementById("btnRestockModo1").textContent = "Mililitros (ml)";
-                            document.getElementById("btnRestockModo2").textContent = "Litros (L)";
-                          } else {
-                            modoBox.classList.add("hidden");
-                          }
-
-                          factorBox.classList.add("hidden");
-                          actualizarEstilosRestockModo(insumo);
-                          document.getElementById("modalRestock").classList.remove("hidden");
-                        };
-
-                        window.setRestockModoMayor = function (esMayor) {
-                          restockModoMayor = esMayor;
-                          const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
-                          if (insumo) actualizarEstilosRestockModo(insumo);
-                        };
-
-                        function actualizarEstilosRestockModo(insumo) {
-                          document.getElementById("btnRestockModo1").classList.toggle("active", !restockModoMayor);
-                          document.getElementById("btnRestockModo2").classList.toggle("active", restockModoMayor);
-
-                          const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
-                          const factorBox = document.getElementById("restockFactorBox");
-
-                          if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
-                            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-                              ? "Cantidad de paquetes a sumar:"
-                              : `Cantidad de ${insumo.UnidadMedida} sueltas a sumar:`;
-                            factorBox.classList.toggle("hidden", !restockModoMayor);
-                          } else if (insumo.ManejaPorciones) {
-                            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-                              ? "Cantidad de unidades (piezas) a sumar:"
-                              : `Cantidad a sumar (${insumo.UnidadMedida}):`;
-                            factorBox.classList.toggle("hidden", !restockModoMayor);
-                          } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
-                            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-                              ? "Cantidad a sumar (Kilogramos):"
-                              : "Cantidad a sumar (Gramos):";
-                            factorBox.classList.add("hidden");
-                          } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
-                            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-                              ? "Cantidad a sumar (Litros):"
-                              : "Cantidad a sumar (Mililitros):";
-                            factorBox.classList.add("hidden");
-                          } else {
-                            document.getElementById("lblRestockCantidad").textContent = `Cantidad a sumar al Stock (${insumo.UnidadMedida}):`;
-                            factorBox.classList.add("hidden");
-                          }
-                        }
-
-                        window.cerrarModalRestock = function () {
-                          document.getElementById("modalRestock").classList.add("hidden");
-                          idRestockActual = null;
-                        };
-
-                        window.guardarRestock = function () {
-                          const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
-                          if (!insumo) return;
-
-                          const cantIngresada = parseFloat(document.getElementById("txtRestockCantidad").value);
-                          if (isNaN(cantIngresada) || cantIngresada <= 0) {
-                            alert("Ingresa una cantidad válida a sumar.");
-                            return;
-                          }
-
-                          let costoCompra = parseFloat(document.getElementById("txtRestockCosto").value);
-                          if (isNaN(costoCompra) || costoCompra < 0) costoCompra = 0;
-
-                          let cantReal = cantIngresada;
-                          const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
-
-                          if (restockModoMayor) {
-                            const factorVal = parseFloat(document.getElementById("txtRestockFactor").value);
-                            if (insumo.ManejaEmpaque) {
-                              const porPaquete = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.UnidadesPorEmpaque) || 1);
-                              cantReal = cantIngresada * porPaquete;
-                            } else if (insumo.ManejaPorciones) {
-                              const piezasPorKilo = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.PorcionesPorKilo) || 10);
-                              const gramosPorUnidad = piezasPorKilo > 0 ? (1000 / piezasPorKilo) : 100;
-                              cantReal = cantIngresada * gramosPorUnidad;
-                            } else if (uLower.includes("gramo") || uLower.includes("kilo") || uLower.includes("mililitro") || uLower.includes("litro")) {
-                              cantReal = cantIngresada * 1000;
-                            }
-                          }
-
-                          const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
-                          const { valorStockActual: costoTotalAnterior } = obtenerMetricasCostoActual(insumo);
-
-                          const nuevoStockTotal = stockAnterior + cantReal;
-                          const nuevoCostoTotalInventario = costoTotalAnterior + costoCompra;
-
-                          insumo.StockActual = nuevoStockTotal;
-                          insumo.CostoIngresado = nuevoCostoTotalInventario;
-                          insumo.EsCostoTotal = true;
-
-                          if (costoCompra > 0) {
-                            registrarGastoInterno("Compra: " + insumo.Nombre, costoCompra);
-                          }
-
-                          cerrarModalRestock();
-                          marcarCambioYSubir();
-                        };
-
-                        // INVENTARIO
-                        window.renderInventario = function () {
-                          const filtro = (document.getElementById("txtBuscarInventario").value || "").trim().toLowerCase();
-                          const cont = document.getElementById("listaInventario");
-                          const items = (estado.Inventario || []).filter(i =>
-                            !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
-                          );
-                          const puedeEditar = estado.Permisos?.PermitirEditarInventario !== false;
-                          const puedeMerma = estado.Permisos?.PermitirMerma !== false;
-
-                          if (items.length === 0) {
-                            cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos registrados.</div></div>`;
-                            return;
-                          }
-
-                          cont.innerHTML = items.map(i => {
-                            const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
-                            return `
-                            <div class="card">
-                              <div>
-                                <div class="card-title">${escaparHtml(i.Nombre)}</div>
-                                <div class="card-meta">Stock: <strong>${escaparHtml(formatearStock(i))}</strong></div>
-                                <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
-                              </div>
-                              <div class="card-actions">
-                                ${puedeEditar ? `<button class="btn" type="button" onclick="abrirModalEditarInsumo('${i.Id}')">Editar</button>` : ""}
-                                ${puedeMerma ? `<button class="btn btn-warning" type="button" onclick="abrirModalMerma('${i.Id}')">Merma</button>` : ""}
-                                ${puedeEditar ? `<button class="btn btn-danger" type="button" onclick="eliminarInsumo('${i.Id}')">Eliminar</button>` : ""}
-                              </div>
-                            </div>
-                          `;
-                          }).join("");
-                        };
-
-                        window.abrirModalNuevoInsumo = function (origen) {
-                          origenModalInsumo = origen || "Inventario";
-                          idInsumoEditando = null;
-                          document.getElementById("insumoModalTitulo").textContent = origen === "Compra" ? "Registrar Compra / Insumo" : "Registrar Insumo";
-                          document.getElementById("txtInsumoNombre").value = "";
-                          document.getElementById("txtInsumoStock").value = "";
-                          document.getElementById("txtUnidadesEmpaque").value = "";
-                          document.getElementById("txtPorcionesKilo").value = "";
-                          document.getElementById("txtInsumoCosto").value = "";
-
-                          setModoPesoForm(false);
-                          setEsCostoTotalForm(true);
-                          setUnidadForm("Unidad");
-                          document.getElementById("modalInsumo").classList.remove("hidden");
-                        };
-
-                        window.abrirModalEditarInsumo = function (id) {
-                          if (estado.Permisos?.PermitirEditarInventario === false) {
-                            alert("La edición de inventario está desactivada en Admin.");
-                            return;
-                          }
-                          const insumo = (estado.Inventario || []).find(i => i.Id === id);
-                          if (!insumo) return;
-
-                          origenModalInsumo = "Inventario";
-                          idInsumoEditando = insumo.Id;
-                          document.getElementById("insumoModalTitulo").textContent = "Modificar Insumo";
-                          document.getElementById("txtInsumoNombre").value = insumo.Nombre || "";
-                          document.getElementById("txtInsumoStock").value = insumo.StockActual ?? 0;
-                          document.getElementById("txtUnidadesEmpaque").value = Number(insumo.UnidadesPorEmpaque) > 1 ? insumo.UnidadesPorEmpaque : "";
-                          document.getElementById("txtPorcionesKilo").value = Number(insumo.PorcionesPorKilo) > 0 ? insumo.PorcionesPorKilo : "";
-                          document.getElementById("txtInsumoCosto").value = insumo.CostoIngresado ?? 0;
-
-                          setModoPesoForm(Boolean(insumo.ManejaPorciones));
-                          setEsCostoTotalForm(insumo.EsCostoTotal !== false);
-                          setUnidadForm(insumo.UnidadMedida || "Unidad");
-                          document.getElementById("modalInsumo").classList.remove("hidden");
-                        };
-
-                        window.setModoPesoForm = function (esPeso) {
-                          esModoPesoForm = esPeso;
-                          document.getElementById("btnTipoUnitario").classList.toggle("active", !esPeso);
-                          document.getElementById("btnTipoPeso").classList.toggle("active", esPeso);
-                          document.getElementById("boxEmpaqueForm").classList.toggle("hidden", esPeso);
-                          document.getElementById("boxPorcionesForm").classList.toggle("hidden", !esPeso);
-                          document.getElementById("lblInsumoStock").textContent = esPeso ? "Cantidad (Kilos / Litros):" : "Cantidad:";
-                        };
-
-                        window.setUnidadForm = function (unidad) {
-                          unidadFormSeleccionada = unidad;
-                          document.querySelectorAll(".unidad-btn").forEach(btn => {
-                            btn.classList.toggle("active", btn.dataset.unidad === unidad);
-                          });
-                        };
-
-                        window.setEsCostoTotalForm = function (esTotal) {
-                          esCostoTotalForm = esTotal;
-                          document.getElementById("btnCostoTotal").classList.toggle("active", esTotal);
-                          document.getElementById("btnCostoUnit").classList.toggle("active", !esTotal);
-                          document.getElementById("lblInsumoCosto").textContent = esTotal ? "Valor ingresado ($):" : "Costo unitario ($):";
-                        };
-
-                        window.cerrarModalInsumo = function () {
-                          document.getElementById("modalInsumo").classList.add("hidden");
-                          idInsumoEditando = null;
-                        };
-
-                        window.guardarInsumoModal = function () {
-                          const nombre = (document.getElementById("txtInsumoNombre").value || "").trim();
-                          if (!nombre) {
-                            alert("Debes ingresar un nombre para el insumo.");
-                            return;
-                          }
-
-                          const stock = parseFloat(document.getElementById("txtInsumoStock").value) || 0;
-                          const costo = parseFloat(document.getElementById("txtInsumoCosto").value) || 0;
-                          const unidadesPaquete = parseFloat(document.getElementById("txtUnidadesEmpaque").value) || 1;
-                          const porciones = parseFloat(document.getElementById("txtPorcionesKilo").value) || 0;
-
-                          const manejaEmpaque = !esModoPesoForm && unidadesPaquete > 1;
-                          const manejaPorciones = esModoPesoForm && porciones > 0;
-                          const stockReal = manejaEmpaque && unidadesPaquete > 1 ? stock * unidadesPaquete : stock;
-
-                          if (!idInsumoEditando) {
-                            estado.Inventario.push({
-                              Id: generarGuid(),
-                              Nombre: nombre,
-                              StockActual: stockReal,
-                              UnidadMedida: unidadFormSeleccionada,
-                              CostoIngresado: costo,
-                              EsCostoTotal: esCostoTotalForm,
-                              ManejaPorciones: manejaPorciones,
-                              PorcionesPorKilo: porciones,
-                              ManejaEmpaque: manejaEmpaque,
-                              UnidadesPorEmpaque: unidadesPaquete
-                            });
-
-                            if (costo > 0) {
-                              const montoGasto = esCostoTotalForm ? costo : (costo * stock);
-                              registrarGastoInterno(origenModalInsumo === "Compra" ? "Compra: " + nombre : nombre, montoGasto);
-                            }
-                          } else {
-                            const insumo = estado.Inventario.find(i => i.Id === idInsumoEditando);
-                            if (insumo) {
-                              insumo.Nombre = nombre;
-                              insumo.StockActual = stockReal;
-                              insumo.UnidadMedida = unidadFormSeleccionada;
-                              insumo.CostoIngresado = costo;
-                              insumo.EsCostoTotal = esCostoTotalForm;
-                              insumo.ManejaPorciones = manejaPorciones;
-                              insumo.PorcionesPorKilo = porciones;
-                              insumo.ManejaEmpaque = manejaEmpaque;
-                              insumo.UnidadesPorEmpaque = unidadesPaquete;
-                            }
-                          }
-
-                          cerrarModalInsumo();
-                          marcarCambioYSubir();
-                        };
-
-                        window.eliminarInsumo = function (id) {
-                          if (estado.Permisos?.PermitirEditarInventario === false) {
-                            alert("La eliminación de insumos está desactivada en Admin.");
-                            return;
-                          }
-                          if (!confirm("¿Deseas eliminar este insumo?")) return;
-                          estado.Inventario = (estado.Inventario || []).filter(i => i.Id !== id);
-                          marcarCambioYSubir();
-                        };
-
-                        // MERMA
-                        window.abrirModalMerma = function (id) {
-                          if (estado.Permisos?.PermitirMerma === false) {
-                            alert("El registro de mermas está desactivado en Admin.");
-                            return;
-                          }
-                          const insumo = (estado.Inventario || []).find(i => i.Id === id);
-                          if (!insumo) return;
-                          idMermaActual = insumo.Id;
-                          document.getElementById("mermaTitulo").textContent = "Merma: " + insumo.Nombre;
-                          document.getElementById("mermaInfo").textContent = `Stock actual: ${formatearStock(insumo)}`;
-                          document.getElementById("txtMermaCantidad").value = "";
-                          document.getElementById("txtMermaMonto").value = "0";
-                          document.getElementById("modalMerma").classList.remove("hidden");
-                        };
-
-                        window.cerrarModalMerma = function () {
-                          document.getElementById("modalMerma").classList.add("hidden");
-                          idMermaActual = null;
-                        };
-
-                        window.guardarMerma = function () {
-                          const insumo = (estado.Inventario || []).find(i => i.Id === idMermaActual);
-                          if (!insumo) return;
-
-                          const cantMerma = parseFloat(document.getElementById("txtMermaCantidad").value);
-                          if (isNaN(cantMerma) || cantMerma <= 0) {
-                            alert("Ingresa una cantidad mayor a cero.");
-                            return;
-                          }
-
-                          const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
-                          const { costoUnitarioPromedio } = obtenerMetricasCostoActual(insumo);
-                          const stockDescontado = Math.min(stockAnterior, cantMerma);
-                          const nuevoStock = Math.max(0, stockAnterior - cantMerma);
-
-                          insumo.StockActual = nuevoStock;
-                          if (insumo.EsCostoTotal !== false) {
-                            insumo.CostoIngresado = Math.max(0, (Number(insumo.CostoIngresado) || 0) - (stockDescontado * costoUnitarioPromedio));
-                          }
-
-                          const montoMerma = parseFloat(document.getElementById("txtMermaMonto").value) || 0;
-                          if (montoMerma > 0) {
-                            trasladarCompraAMermaInterno(insumo.Nombre, montoMerma);
-                          }
-
-                          cerrarModalMerma();
-                          marcarCambioYSubir();
-                        };
-
-                        function trasladarCompraAMermaInterno(conceptoInsumo, montoMerma) {
-                          if (montoMerma <= 0) return;
-                          const nombreLimpio = (conceptoInsumo || "").trim();
-                          const conceptoCompra = "Compra: " + nombreLimpio;
-
-                          const compraReciente = (estado.Gastos || []).find(g =>
-                            Number(g.Monto) > 0 &&
-                            ((g.Concepto || "").toLowerCase() === conceptoCompra.toLowerCase() ||
-                             (g.Concepto || "").toLowerCase() === nombreLimpio.toLowerCase())
-                          );
-
-                          let montoTrasladado = montoMerma;
-                          if (compraReciente) {
-                            const montoCompraActual = Number(compraReciente.Monto) || 0;
-                            if (montoCompraActual > montoMerma) {
-                              compraReciente.Monto = Math.round((montoCompraActual - montoMerma) * 100) / 100;
-                            } else {
-                              montoTrasladado = montoCompraActual;
-                              estado.Gastos = estado.Gastos.filter(g => g.Id !== compraReciente.Id);
-                            }
-                          }
-
-                          if (montoTrasladado > 0) {
-                            const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
-                            estado.Gastos.unshift({
-                              Id: generarGuid(),
-                              TurnoId: turno.Id,
-                              FechaOperativa: turno.FechaOperativa,
-                              FechaHoraRegistro: new Date().toISOString(),
-                              Concepto: nombreLimpio ? "Merma: " + nombreLimpio : "Merma",
-                              Monto: montoTrasladado
-                            });
-                          }
-                        }
-
-                        // CORTE DE CAJA
-                        function obtenerFechaOperativa(fechaObj) {
-                          const f = new Date(fechaObj);
-                          if (f.getHours() < 6) {
-                            f.setDate(f.getDate() - 1);
-                          }
-                          return f.toISOString().slice(0, 10) + "T00:00:00";
-                        }
-
-                        function obtenerTurnoAbierto() {
-                          return (estado.Turnos || []).find(t => !t.FechaCierre);
-                        }
-
-                        function abrirTurnoInterno() {
-                          const existente = obtenerTurnoAbierto();
-                          if (existente) return existente;
-                          const ahora = new Date();
-                          const nuevo = {
-                            Id: generarGuid(),
-                            FechaApertura: ahora.toISOString(),
-                            FechaCierre: null,
-                            FechaOperativa: obtenerFechaOperativa(ahora)
-                          };
-                          estado.Turnos = estado.Turnos || [];
-                          estado.Turnos.unshift(nuevo);
-                          return nuevo;
-                        }
-
-                        function registrarGastoInterno(concepto, monto) {
-                          if (!monto || monto <= 0) return;
-                          const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
-                          estado.Gastos = estado.Gastos || [];
-                          estado.Gastos.unshift({
-                            Id: generarGuid(),
-                            TurnoId: turno.Id,
-                            FechaOperativa: turno.FechaOperativa,
-                            FechaHoraRegistro: new Date().toISOString(),
-                            Concepto: (concepto || "Compra de insumos").trim(),
-                            Monto: monto
-                          });
-                        }
-
-                        window.toggleTurno = function () {
-                          const actual = obtenerTurnoAbierto();
-                          if (!actual) {
-                            abrirTurnoInterno();
-                            marcarCambioYSubir();
-                          } else {
-                            if (estado.Permisos?.PermitirCerrarTurno === false) {
-                              alert("El cierre de turno está desactivado en Admin.");
-                              return;
-                            }
-                            if (!confirm("¿Deseas cerrar el turno operativo actual y realizar el corte de caja?")) return;
-                            actual.FechaCierre = new Date().toISOString();
-                            marcarCambioYSubir();
-                          }
-                        };
-
-                        window.registrarGastoManual = function () {
-                          const concepto = prompt("Concepto o insumo comprado:");
-                          if (concepto === null) return;
-                          const montoStr = prompt("Monto del gasto ($):");
-                          if (montoStr === null) return;
-                          const monto = parseFloat(montoStr);
-                          if (isNaN(monto) || monto <= 0) {
-                            alert("Ingresa un monto válido mayor a 0.");
-                            return;
-                          }
-                          registrarGastoInterno(concepto, monto);
-                          marcarCambioYSubir();
-                        };
-
-                        window.cambiarPeriodo = function (per) {
-                          periodoActual = per;
-                          document.getElementById("filtroDia").classList.toggle("active", per === "Dia");
-                          document.getElementById("filtroSemanal").classList.toggle("active", per === "Semanal");
-                          document.getElementById("filtroMensual").classList.toggle("active", per === "Mensual");
-                          renderCorte();
-                        };
-
-                        window.cambiarSubTabCorte = function (tab) {
-                          subTabCorte = tab;
-                          document.getElementById("subTabFacturas").classList.toggle("active", tab === "Facturas");
-                          document.getElementById("subTabGastos").classList.toggle("active", tab === "Gastos");
-                          document.getElementById("panelFacturas").classList.toggle("hidden", tab !== "Facturas");
-                          document.getElementById("panelGastos").classList.toggle("hidden", tab !== "Gastos");
-                        };
-
-                        window.eliminarFactura = function (facturaId) {
-                          if (estado.Permisos?.PermitirEliminarFactura === false) {
-                            alert("La eliminación de facturas está desactivada en Admin.");
-                            return;
-                          }
-                          if (!confirm("¿Deseas eliminar esta factura? Se restará del total de ventas y los insumos volverán al inventario.")) return;
-                          const fac = (estado.Facturas || []).find(f => f.Id === facturaId);
-                          if (!fac) return;
-
-                          if (Array.isArray(fac.InsumosDescontados)) {
-                            fac.InsumosDescontados.forEach(ing => {
-                              const ins = (estado.Inventario || []).find(i => i.Id === ing.InsumoId);
-                              if (ins) {
-                                const cantDevuelta = Number(ing.Cantidad) || 0;
-                                const { costoUnitarioPromedio } = obtenerMetricasCostoActual(ins);
-                                ins.StockActual = (Number(ins.StockActual) || 0) + cantDevuelta;
-                                if (ins.EsCostoTotal !== false) {
-                                  ins.CostoIngresado = (Number(ins.CostoIngresado) || 0) + (cantDevuelta * costoUnitarioPromedio);
+                                function obtenerTurnoAbierto() {
+                                  return (estado.Turnos || []).find(t => !t.FechaCierre);
                                 }
-                              }
-                            });
-                          }
 
-                          estado.Facturas = estado.Facturas.filter(f => f.Id !== facturaId);
-                          marcarCambioYSubir();
-                        };
+                                function abrirTurnoInterno() {
+                                  const existente = obtenerTurnoAbierto();
+                                  if (existente) return existente;
+                                  const ahora = new Date();
+                                  const nuevo = {
+                                    Id: generarGuid(),
+                                    FechaApertura: ahora.toISOString(),
+                                    FechaCierre: null,
+                                    FechaOperativa: obtenerFechaOperativa(ahora)
+                                  };
+                                  estado.Turnos = estado.Turnos || [];
+                                  estado.Turnos.unshift(nuevo);
+                                  return nuevo;
+                                }
 
-                        window.eliminarGasto = function (gastoId) {
-                          if (!confirm("¿Deseas eliminar este recibo?")) return;
-                          estado.Gastos = (estado.Gastos || []).filter(g => g.Id !== gastoId);
-                          marcarCambioYSubir();
-                        };
+                                function registrarGastoInterno(concepto, monto) {
+                                  if (!monto || monto <= 0) return;
+                                  const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
+                                  estado.Gastos = estado.Gastos || [];
+                                  estado.Gastos.unshift({
+                                    Id: generarGuid(),
+                                    TurnoId: turno.Id,
+                                    FechaOperativa: turno.FechaOperativa,
+                                    FechaHoraRegistro: new Date().toISOString(),
+                                    Concepto: (concepto || "Compra de insumos").trim(),
+                                    Monto: monto
+                                  });
+                                }
 
-                        function obtenerRangoPeriodo() {
-                          const turno = obtenerTurnoAbierto();
-                          const refStr = turno?.FechaOperativa || obtenerFechaOperativa(new Date());
-                          const refDate = new Date(refStr.slice(0, 10) + "T00:00:00");
+                                window.toggleTurno = function () {
+                                  const actual = obtenerTurnoAbierto();
+                                  if (!actual) {
+                                    abrirTurnoInterno();
+                                    marcarCambioYSubir();
+                                  } else {
+                                    if (!confirm("¿Deseas cerrar el turno operativo actual y realizar el corte de caja?")) return;
+                                    actual.FechaCierre = new Date().toISOString();
+                                    marcarCambioYSubir();
+                                  }
+                                };
 
-                          let inicio = new Date(refDate);
-                          let fin = new Date(refDate);
+                                window.registrarGastoManual = function () {
+                                  const concepto = prompt("Concepto o insumo comprado:");
+                                  if (concepto === null) return;
+                                  const montoStr = prompt("Monto del gasto ($):");
+                                  if (montoStr === null) return;
+                                  const monto = parseFloat(montoStr);
+                                  if (isNaN(monto) || monto <= 0) {
+                                    alert("Ingresa un monto válido mayor a 0.");
+                                    return;
+                                  }
+                                  registrarGastoInterno(concepto, monto);
+                                  marcarCambioYSubir();
+                                };
 
-                          if (periodoActual === "Semanal") {
-                            const diffLunes = (refDate.getDay() + 6) % 7;
-                            inicio.setDate(refDate.getDate() - diffLunes);
-                            fin = new Date(inicio);
-                            fin.setDate(inicio.getDate() + 6);
-                          } else if (periodoActual === "Mensual") {
-                            inicio = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
-                            fin = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
-                          }
+                                window.cambiarPeriodo = function (per) {
+                                  periodoActual = per;
+                                  document.getElementById("filtroDia").classList.toggle("active", per === "Dia");
+                                  document.getElementById("filtroSemanal").classList.toggle("active", per === "Semanal");
+                                  document.getElementById("filtroMensual").classList.toggle("active", per === "Mensual");
+                                  renderCorte();
+                                };
 
-                          return {
-                            inicioStr: inicio.toISOString().slice(0, 10),
-                            finStr: fin.toISOString().slice(0, 10),
-                            refStr: refStr.slice(0, 10),
-                            turno
-                          };
-                        }
+                                window.cambiarSubTabCorte = function (tab) {
+                                  subTabCorte = tab;
+                                  document.getElementById("subTabFacturas").classList.toggle("active", tab === "Facturas");
+                                  document.getElementById("subTabGastos").classList.toggle("active", tab === "Gastos");
+                                  document.getElementById("panelFacturas").classList.toggle("hidden", tab !== "Facturas");
+                                  document.getElementById("panelGastos").classList.toggle("hidden", tab !== "Gastos");
+                                };
 
-                        window.renderCorte = function () {
-                          const { inicioStr, finStr, refStr, turno } = obtenerRangoPeriodo();
+                                window.eliminarFactura = function (facturaId) {
+                                  if (!confirm("¿Deseas eliminar esta factura? Se restará del total de ventas y los insumos volverán al inventario.")) return;
+                                  const fac = (estado.Facturas || []).find(f => f.Id === facturaId);
+                                  if (!fac) return;
 
-                          document.getElementById("lblEstadoTurno").textContent = turno
-                            ? "Turno activo"
-                            : "Sin turno abierto";
-                          document.getElementById("lblFechaOperativa").textContent = "Día operativo de referencia: " + refStr;
-                          document.getElementById("btnToggleTurno").textContent = turno ? "Cerrar Turno" : "Abrir Turno";
-                          document.getElementById("btnToggleTurno").className = turno ? "btn btn-danger" : "btn btn-success";
+                                  if (Array.isArray(fac.InsumosDescontados)) {
+                                    fac.InsumosDescontados.forEach(ing => {
+                                      const ins = (estado.Inventario || []).find(i => i.Id === ing.InsumoId);
+                                      if (ins) {
+                                        const cantDevuelta = Number(ing.Cantidad) || 0;
+                                        const { costoUnitarioPromedio } = obtenerMetricasCostoActual(ins);
+                                        ins.StockActual = (Number(ins.StockActual) || 0) + cantDevuelta;
+                                        if (ins.EsCostoTotal !== false) {
+                                          ins.CostoIngresado = (Number(ins.CostoIngresado) || 0) + (cantDevuelta * costoUnitarioPromedio);
+                                        }
+                                      }
+                                    });
+                                  }
 
-                          const facturasPeriodo = (estado.Facturas || []).filter(f => {
-                            const fOp = (f.FechaOperativa || "").slice(0, 10);
-                            return fOp >= inicioStr && fOp <= finStr;
-                          });
+                                  estado.Facturas = estado.Facturas.filter(f => f.Id !== facturaId);
+                                  marcarCambioYSubir();
+                                };
 
-                          const gastosPeriodo = (estado.Gastos || []).filter(g => {
-                            const gOp = (g.FechaOperativa || "").slice(0, 10);
-                            return gOp >= inicioStr && gOp <= finStr;
-                          });
+                                window.eliminarGasto = function (gastoId) {
+                                  if (!confirm("¿Deseas eliminar este recibo?")) return;
+                                  estado.Gastos = (estado.Gastos || []).filter(g => g.Id !== gastoId);
+                                  marcarCambioYSubir();
+                                };
 
-                          const totalVentas = facturasPeriodo.reduce((acc, f) => acc + (Number(f.TotalCobrado) || 0), 0);
-                          const totalGastos = gastosPeriodo.reduce((acc, g) => acc + (Number(g.Monto) || 0), 0);
-                          const gananciaNeta = Math.round((totalVentas - totalGastos) * 100) / 100;
+                                function obtenerRangoPeriodo() {
+                                  const turno = obtenerTurnoAbierto();
+                                  const refStr = turno?.FechaOperativa || obtenerFechaOperativa(new Date());
+                                  const refDate = new Date(refStr.slice(0, 10) + "T00:00:00");
 
-                          document.getElementById("kpiVentas").textContent = formatearMoneda(totalVentas);
-                          document.getElementById("kpiGastos").textContent = formatearMoneda(totalGastos);
-                          const kpiGanEl = document.getElementById("kpiGanancia");
-                          kpiGanEl.textContent = formatearMoneda(gananciaNeta);
-                          kpiGanEl.style.color = gananciaNeta >= 0 ? "var(--success)" : "var(--danger)";
+                                  let inicio = new Date(refDate);
+                                  let fin = new Date(refDate);
 
-                          const panelFac = document.getElementById("panelFacturas");
-                          if (facturasPeriodo.length === 0) {
-                            panelFac.innerHTML = `<div class="card-meta">No hay facturas en este período.</div>`;
-                          } else {
-                            panelFac.innerHTML = facturasPeriodo.map(f => `
-                              <div class="list-row">
-                                <div>
-                                  <strong>${formatearMoneda(f.TotalCobrado)}</strong> • ${escaparHtml(f.MetodoPago || "Efectivo")}
-                                  <div class="card-meta">${escaparHtml(f.ResumenProductos || "")}</div>
-                                </div>
-                                <button class="btn btn-danger" type="button" onclick="eliminarFactura('${f.Id}')">Eliminar</button>
-                              </div>
-                            `).join("");
-                          }
+                                  if (periodoActual === "Semanal") {
+                                    const diffLunes = (refDate.getDay() + 6) % 7;
+                                    inicio.setDate(refDate.getDate() - diffLunes);
+                                    fin = new Date(inicio);
+                                    fin.setDate(inicio.getDate() + 6);
+                                  } else if (periodoActual === "Mensual") {
+                                    inicio = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+                                    fin = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
+                                  }
 
-                          const panelGas = document.getElementById("panelGastos");
-                          if (gastosPeriodo.length === 0) {
-                            panelGas.innerHTML = `<div class="card-meta">No hay recibos de compra o merma en este período.</div>`;
-                          } else {
-                            panelGas.innerHTML = gastosPeriodo.map(g => `
-                              <div class="list-row">
-                                <div>
-                                  <strong>${escaparHtml(g.Concepto || "Gasto")}</strong> — ${formatearMoneda(g.Monto)}
-                                  <div class="card-meta">${escaparHtml((g.FechaHoraRegistro || "").replace("T", " ").slice(0, 16))}</div>
-                                </div>
-                                <button class="btn btn-danger" type="button" onclick="eliminarGasto('${g.Id}')">Eliminar</button>
-                              </div>
-                            `).join("");
-                          }
-                        };
+                                  return {
+                                    inicioStr: inicio.toISOString().slice(0, 10),
+                                    finStr: fin.toISOString().slice(0, 10),
+                                    refStr: refStr.slice(0, 10),
+                                    turno
+                                  };
+                                }
 
-                        function escaparHtml(str) {
-                          return String(str ?? "")
-                            .replaceAll("&", "&amp;")
-                            .replaceAll("<", "&lt;")
-                            .replaceAll(">", "&gt;")
-                            .replaceAll('"', "&quot;");
-                        }
+                                window.renderCorte = function () {
+                                  const { inicioStr, finStr, refStr, turno } = obtenerRangoPeriodo();
+
+                                  document.getElementById("lblEstadoTurno").textContent = turno
+                                    ? "Turno activo"
+                                    : "Sin turno abierto";
+                                  document.getElementById("lblFechaOperativa").textContent = "Día operativo de referencia: " + refStr;
+                                  document.getElementById("btnToggleTurno").textContent = turno ? "Cerrar Turno" : "Abrir Turno";
+                                  document.getElementById("btnToggleTurno").className = turno ? "btn btn-danger" : "btn btn-success";
+
+                                  const facturasPeriodo = (estado.Facturas || []).filter(f => {
+                                    const fOp = (f.FechaOperativa || "").slice(0, 10);
+                                    return fOp >= inicioStr && fOp <= finStr;
+                                  });
+
+                                  const gastosPeriodo = (estado.Gastos || []).filter(g => {
+                                    const gOp = (g.FechaOperativa || "").slice(0, 10);
+                                    return gOp >= inicioStr && gOp <= finStr;
+                                  });
+
+                                  const totalVentas = facturasPeriodo.reduce((acc, f) => acc + (Number(f.TotalCobrado) || 0), 0);
+                                  const totalGastos = gastosPeriodo.reduce((acc, g) => acc + (Number(g.Monto) || 0), 0);
+                                  const gananciaNeta = Math.round((totalVentas - totalGastos) * 100) / 100;
+
+                                  document.getElementById("kpiVentas").textContent = formatearMoneda(totalVentas);
+                                  document.getElementById("kpiGastos").textContent = formatearMoneda(totalGastos);
+                                  const kpiGanEl = document.getElementById("kpiGanancia");
+                                  kpiGanEl.textContent = formatearMoneda(gananciaNeta);
+                                  kpiGanEl.style.color = gananciaNeta >= 0 ? "var(--success)" : "var(--danger)";
+
+                                  const panelFac = document.getElementById("panelFacturas");
+                                  if (facturasPeriodo.length === 0) {
+                                    panelFac.innerHTML = `<div class="card-meta">No hay facturas en este período.</div>`;
+                                  } else {
+                                    panelFac.innerHTML = facturasPeriodo.map(f => `
+                                      <div class="list-row">
+                                        <div>
+                                          <strong>${formatearMoneda(f.TotalCobrado)}</strong> • ${escaparHtml(f.MetodoPago || "Efectivo")}
+                                          <div class="card-meta">${escaparHtml(f.ResumenProductos || "")}</div>
+                                        </div>
+                                        <button class="btn btn-danger" type="button" onclick="eliminarFactura('${f.Id}')">Eliminar</button>
+                                      </div>
+                                    `).join("");
+                                  }
+
+                                  const panelGas = document.getElementById("panelGastos");
+                                  if (gastosPeriodo.length === 0) {
+                                    panelGas.innerHTML = `<div class="card-meta">No hay recibos de compra o merma en este período.</div>`;
+                                  } else {
+                                    panelGas.innerHTML = gastosPeriodo.map(g => `
+                                      <div class="list-row">
+                                        <div>
+                                          <strong>${escaparHtml(g.Concepto || "Gasto")}</strong> — ${formatearMoneda(g.Monto)}
+                                          <div class="card-meta">${escaparHtml((g.FechaHoraRegistro || "").replace("T", " ").slice(0, 16))}</div>
+                                        </div>
+                                        <button class="btn btn-danger" type="button" onclick="eliminarGasto('${g.Id}')">Eliminar</button>
+                                      </div>
+                                    `).join("");
+                                  }
+                                };
+
+                                function escaparHtml(str) {
+                                  return String(str ?? "")
+                                    .replaceAll("&", "&amp;")
+                                    .replaceAll("<", "&lt;")
+                                    .replaceAll(">", "&gt;")
+                                    .replaceAll('"', "&quot;");
+                                }
     </script>
 </body>
 </html>
