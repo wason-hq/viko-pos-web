@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Viko POS — Administración, Compras, Inventario y Corte de Caja</title>
+    <link rel="icon" type="image/png" href="viko_inicio.png" />
     <style>
         :root {
             --bg: #f1f5f9;
@@ -124,8 +125,16 @@
             justify-content: center;
             font-size: 26px;
             font-weight: 800;
+            overflow: hidden;
             box-shadow: 0 10px 24px rgba(245, 158, 11, 0.35);
         }
+
+            .login-logo img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block;
+            }
 
         .login-card h1 {
             margin: 0 0 8px;
@@ -737,7 +746,7 @@
     <div id="loginView" class="login-wrap">
         <div class="login-card">
             <div class="login-badge">🛡️ Consola Admin • Nube</div>
-            <div class="login-logo">V</div>
+            <div class="login-logo"><img src="viko_inicio.png" alt="Viko POS" /></div>
             <h1>Viko POS Admin</h1>
             <p>Administración centralizada de <strong>Negocio y Rubro</strong>, <strong>Terminales y Permisos</strong>, <strong>Compras</strong>, <strong>Inventario</strong> y <strong>Corte de Caja</strong>.</p>
             <button id="btnGoogleLogin" class="btn-google" type="button">
@@ -1062,1070 +1071,1138 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-        import {
-          getAuth,
-          GoogleAuthProvider,
-          signInWithPopup,
-          signOut,
-          onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyD_oOt_qQXqgoVrygBQuLrAZ2IBAkpEBdQ",
-          authDomain: "viko-pos-app.firebaseapp.com",
-          databaseURL: "https://viko-pos-app-default-rtdb.firebaseio.com",
-          projectId: "viko-pos-app"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const googleProvider = new GoogleAuthProvider();
-
-        let currentUser = null;
-        let idTokenActual = null;
-        let userKeyActual = null;
-
-        let estado = {
-          Uid: "",
-          Email: "",
-          NombreNegocio: "",
-          Rubro: "Comida Rápida",
-          SucursalId: "Principal",
-          Permisos: {
-            PermitirEliminarFactura: true,
-            PermitirMerma: true,
-            PermitirCerrarTurno: true,
-            PermitirEditarInventario: true
-          },
-          Terminales: [],
-          FechaActualizacion: "1970-01-01T00:00:00.000Z",
-          Inventario: [],
-          ProductosVenta: [],
-          Turnos: [],
-          Facturas: [],
-          Gastos: []
-        };
-
-        let hayCambiosPendientes = false;
-        let sincronizando = false;
-        let seccionActual = "Compras";
-        let periodoActual = "Dia";
-        let subTabCorte = "Facturas";
-        let modoOscuroActivo = false;
-
-        // Estado modales
-        let idRestockActual = null;
-        let restockModoMayor = false;
-
-        let idInsumoEditando = null;
-        let origenModalInsumo = "Inventario";
-        let esModoPesoForm = false;
-        let esCostoTotalForm = true;
-        let unidadFormSeleccionada = "Unidad";
-
-        let idMermaActual = null;
-
-        function normalizarEstado(remoto) {
-          const r = remoto || {};
-          return {
-            Uid: r.Uid || currentUser?.uid || "",
-            Email: r.Email || currentUser?.email || "",
-            NombreNegocio: r.NombreNegocio || "",
-            Rubro: r.Rubro || "Comida Rápida",
-            SucursalId: r.SucursalId || "Principal",
-            Permisos: {
-              PermitirEliminarFactura: r.Permisos?.PermitirEliminarFactura !== false,
-              PermitirMerma: r.Permisos?.PermitirMerma !== false,
-              PermitirCerrarTurno: r.Permisos?.PermitirCerrarTurno !== false,
-              PermitirEditarInventario: r.Permisos?.PermitirEditarInventario !== false
-            },
-            Terminales: Array.isArray(r.Terminales) ? r.Terminales : [],
-            FechaActualizacion: r.FechaActualizacion || new Date().toISOString(),
-            Inventario: Array.isArray(r.Inventario) ? r.Inventario : [],
-            ProductosVenta: Array.isArray(r.ProductosVenta) ? r.ProductosVenta : [],
-            Turnos: Array.isArray(r.Turnos) ? r.Turnos : [],
-            Facturas: Array.isArray(r.Facturas) ? r.Facturas : [],
-            Gastos: Array.isArray(r.Gastos) ? r.Gastos : []
-          };
-        }
-
-        function actualizarEncabezadoAdmin() {
-          const negocioLimpio = (estado.NombreNegocio || "").trim();
-          const mostrarNegocio = negocioLimpio && negocioLimpio.toLowerCase() !== "burger master"
-            ? negocioLimpio
-            : "Viko POS";
-          document.getElementById("lblNegocio").textContent = mostrarNegocio;
-          document.getElementById("lblRubroBadge").textContent = estado.Rubro || "Comida Rápida";
-        }
-
-        function obtenerClaveTemaUsuario() {
-          return "viko_pos_dark_mode_" + (userKeyActual || "guest");
-        }
-
-        function aplicarEstadoModoOscuro(activo) {
-          modoOscuroActivo = Boolean(activo);
-          document.body.classList.toggle("dark-mode", modoOscuroActivo);
-          const btn = document.getElementById("btnModoOscuro");
-          if (btn) {
-            btn.textContent = modoOscuroActivo ? "Modo claro" : "Modo oscuro";
-          }
-        }
-
-        function cargarModoOscuroUsuario() {
-          try {
-            const guardado = localStorage.getItem(obtenerClaveTemaUsuario());
-            aplicarEstadoModoOscuro(guardado === "1");
-          } catch (e) {
-            aplicarEstadoModoOscuro(false);
-          }
-        }
-
-        window.toggleModoOscuro = function () {
-          const siguiente = !modoOscuroActivo;
-          aplicarEstadoModoOscuro(siguiente);
-          try {
-            localStorage.setItem(obtenerClaveTemaUsuario(), siguiente ? "1" : "0");
-          } catch (e) {}
-        };
-
-        cargarModoOscuroUsuario();
-
-        function sanitizarClaveFirebase(email) {
-          return email.trim().toLowerCase()
-            .replaceAll(".", "_")
-            .replaceAll("@", "_at_")
-            .replaceAll("$", "_")
-            .replaceAll("#", "_")
-            .replaceAll("[", "_")
-            .replaceAll("]", "_");
-        }
-
-        function generarGuid() {
-          if (crypto && crypto.randomUUID) return crypto.randomUUID();
-          return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-            const r = (Math.random() * 16) | 0;
-            const v = c === "x" ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-          });
-        }
-
-        function formatearMoneda(valor) {
-          const num = Number(valor) || 0;
-          return "$" + num.toLocaleString("es-CO", { maximumFractionDigits: 2 });
-        }
-
-        function obtenerMetricasCostoActual(insumo) {
-          const stockActual = Math.max(0, Number(insumo.StockActual) || 0);
-          const costoIngresado = Math.max(0, Number(insumo.CostoIngresado) || 0);
-          const esCostoTotal = insumo.EsCostoTotal !== false;
-
-          if (stockActual <= 0) {
-            return {
-              costoUnitarioPromedio: 0,
-              valorStockActual: 0
-            };
-          }
-
-          const valorStockActual = esCostoTotal
-            ? costoIngresado
-            : (costoIngresado * stockActual);
-
-          const costoUnitarioPromedio = valorStockActual / stockActual;
-
-          return {
-            costoUnitarioPromedio,
-            valorStockActual
-          };
-        }
-
-        function setSyncStatus(texto) {
-          const el = document.getElementById("lblSyncStatus");
-          if (el) el.textContent = texto;
-        }
-
-        document.getElementById("btnGoogleLogin").addEventListener("click", async () => {
-          const errEl = document.getElementById("loginError");
-          errEl.textContent = "";
-          try {
-            await signInWithPopup(auth, googleProvider);
-          } catch (err) {
-            errEl.textContent = err?.message || "No se pudo iniciar sesión con Google.";
-          }
-        });
-
-        window.cerrarSesion = async function () {
-          await signOut(auth);
-        };
-
-        onAuthStateChanged(auth, async (user) => {
-          if (!user || !user.email) {
-            currentUser = null;
-            idTokenActual = null;
-            userKeyActual = null;
-            cargarModoOscuroUsuario();
-            document.getElementById("loginView").classList.remove("hidden");
-            document.getElementById("appView").classList.add("hidden");
-            return;
-          }
-
-          currentUser = user;
-          userKeyActual = sanitizarClaveFirebase(user.email);
-          cargarModoOscuroUsuario();
-          idTokenActual = await user.getIdToken(true);
-
-          document.getElementById("loginView").classList.add("hidden");
-          document.getElementById("appView").classList.remove("hidden");
-          document.getElementById("lblUsuarioEmail").textContent = user.email;
-
-          await descargarRemoto(true);
-          renderTodo();
-        });
-
-        setInterval(async () => {
-          if (!currentUser || sincronizando || hayCambiosPendientes) return;
-          await descargarRemoto(false);
-        }, 5000);
-
-        window.sincronizarManual = async function () {
-          if (!currentUser) return;
-          if (hayCambiosPendientes) {
-            await subirCambios();
-          }
-          await descargarRemoto(true);
-        };
-
-        async function refrescarTokenSiNecesario() {
-          if (!currentUser) return null;
-          idTokenActual = await currentUser.getIdToken(false);
-          return idTokenActual;
-        }
-
-        async function descargarRemoto(forzarRender) {
-          if (!currentUser || !userKeyActual || sincronizando || hayCambiosPendientes) return;
-          sincronizando = true;
-          try {
-            const token = await refrescarTokenSiNecesario();
-            if (!token) return;
-
-            const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
-            const resp = await fetch(url);
-            if (!resp.ok) {
-              setSyncStatus("Error al leer Firebase (" + resp.status + ")");
-              return;
-            }
-
-            const remoto = await resp.json();
-            if (!remoto) {
-              setSyncStatus("Sin datos previos en nube • Listo");
-              return;
-            }
-
-            const fechaRemota = Date.parse(remoto.FechaActualizacion || 0) || 0;
-            const fechaLocal = Date.parse(estado.FechaActualizacion || 0) || 0;
-
-            if (fechaRemota > fechaLocal || forzarRender) {
-              estado = normalizarEstado(remoto);
-              actualizarEncabezadoAdmin();
-              renderTodo();
-            }
-
-            const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            setSyncStatus("Sincronizado • " + hora);
-          } catch (e) {
-            setSyncStatus("Sin conexión con Firebase");
-          } finally {
-            sincronizando = false;
-          }
-        }
-
-        function marcarCambioYSubir() {
-          estado.Uid = currentUser?.uid || estado.Uid;
-          estado.Email = currentUser?.email || estado.Email;
-          estado.FechaActualizacion = new Date().toISOString();
-          hayCambiosPendientes = true;
-          actualizarEncabezadoAdmin();
-          renderTodo();
-          subirCambios();
-        }
-
-        async function subirCambios() {
-          if (!currentUser || !userKeyActual) return;
-          sincronizando = true;
-          setSyncStatus("Subiendo cambios...");
-          try {
-            const token = await currentUser.getIdToken(true);
-            idTokenActual = token;
-            const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
-            const resp = await fetch(url, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(estado)
-            });
-            if (resp.ok) {
-              hayCambiosPendientes = false;
-              const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-              setSyncStatus("Guardado y sincronizado • " + hora);
-            } else {
-              setSyncStatus("Error al guardar en Firebase (" + resp.status + ")");
-            }
-          } catch (e) {
-            setSyncStatus("Cambio pendiente (sin red)");
-          } finally {
-            sincronizando = false;
-          }
-        }
-
-        // Navegación
-        window.cambiarSeccion = function (sec) {
-          seccionActual = sec;
-          document.getElementById("tabAdmin").classList.toggle("active", sec === "Admin");
-          document.getElementById("tabCompras").classList.toggle("active", sec === "Compras");
-          document.getElementById("tabInventario").classList.toggle("active", sec === "Inventario");
-          document.getElementById("tabCorte").classList.toggle("active", sec === "Corte");
-
-          document.getElementById("secAdmin").classList.toggle("hidden", sec !== "Admin");
-          document.getElementById("secCompras").classList.toggle("hidden", sec !== "Compras");
-          document.getElementById("secInventario").classList.toggle("hidden", sec !== "Inventario");
-          document.getElementById("secCorte").classList.toggle("hidden", sec !== "Corte");
-
-          renderTodo();
-        };
-
-        function renderTodo() {
-          if (seccionActual === "Admin") renderAdmin();
-          else if (seccionActual === "Compras") renderCompras();
-          else if (seccionActual === "Inventario") renderInventario();
-          else if (seccionActual === "Corte") renderCorte();
-        }
-
-        function formatearStock(insumo) {
-          const stock = Number(insumo.StockActual) || 0;
-          const unidad = insumo.UnidadMedida || "Unidad";
-          return `${stock} ${unidad}`;
-        }
-
-        // ADMIN
-        window.renderAdmin = function () {
-          estado = normalizarEstado(estado);
-          document.getElementById("txtAdminNegocio").value = estado.NombreNegocio || "";
-          document.getElementById("selAdminRubro").value = estado.Rubro || "Comida Rápida";
-          document.getElementById("txtAdminSucursal").value = estado.SucursalId || "Principal";
-
-          document.getElementById("chkPermEliminarFactura").checked = estado.Permisos.PermitirEliminarFactura !== false;
-          document.getElementById("chkPermMerma").checked = estado.Permisos.PermitirMerma !== false;
-          document.getElementById("chkPermCerrarTurno").checked = estado.Permisos.PermitirCerrarTurno !== false;
-          document.getElementById("chkPermEditarInventario").checked = estado.Permisos.PermitirEditarInventario !== false;
-
-          const totalInsumos = (estado.Inventario || []).length;
-          const totalFacturas = (estado.Facturas || []).length;
-          const totalTerminales = (estado.Terminales || []).length;
-          document.getElementById("lblAdminResumenEstado").textContent =
-            `Rubro: ${estado.Rubro} • Sucursal: ${estado.SucursalId} • Insumos: ${totalInsumos} • Facturas: ${totalFacturas} • Terminales: ${totalTerminales}`;
-
-          const contTerm = document.getElementById("listaTerminalesAdmin");
-          if (!estado.Terminales.length) {
-            contTerm.innerHTML = `<div class="card-meta">No hay terminales registradas todavía. Usa "+ Registrar Terminal Actual" para agregar este equipo.</div>`;
-            return;
-          }
-
-          contTerm.innerHTML = estado.Terminales.map(t => {
-            const activa = t.Activa !== false;
-            return `
-              <div class="list-row">
-                <div>
-                  <strong>${escaparHtml(t.Nombre || "Terminal Web")}</strong> • <span class="card-meta">ID: ${escaparHtml(t.Id || "")}</span>
-                  <div class="card-meta">Sucursal: ${escaparHtml(t.SucursalId || estado.SucursalId)} • Estado: <strong>${activa ? "Activa" : "Desactivada"}</strong></div>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  <button class="btn ${activa ? "btn-warning" : "btn-success"}" type="button" onclick="toggleTerminalAdmin('${t.Id}')">${activa ? "Desactivar" : "Activar"}</button>
-                  <button class="btn btn-danger" type="button" onclick="eliminarTerminalAdmin('${t.Id}')">Quitar</button>
-                </div>
-              </div>
-            `;
-          }).join("");
-        };
-
-        window.guardarConfigAdmin = function () {
-          const nombre = (document.getElementById("txtAdminNegocio").value || "").trim();
-          const rubro = document.getElementById("selAdminRubro").value || "Comida Rápida";
-          const sucursal = (document.getElementById("txtAdminSucursal").value || "").trim() || "Principal";
-
-          estado.NombreNegocio = nombre;
-          estado.Rubro = rubro;
-          estado.SucursalId = sucursal;
-          marcarCambioYSubir();
-        };
-
-        window.actualizarPermisoAdmin = function (clave, valor) {
-          estado.Permisos = estado.Permisos || {};
-          estado.Permisos[clave] = Boolean(valor);
-          marcarCambioYSubir();
-        };
-
-        window.registrarTerminalActual = function () {
-          const nombreSugerido = navigator.platform ? `Web (${navigator.platform})` : "Terminal Web";
-          const nombre = prompt("Nombre de esta terminal:", nombreSugerido);
-          if (nombre === null) return;
-
-          estado.Terminales = estado.Terminales || [];
-          estado.Terminales.unshift({
-            Id: generarGuid().slice(0, 8).toUpperCase(),
-            Nombre: (nombre || nombreSugerido).trim(),
-            SucursalId: estado.SucursalId || "Principal",
-            Activa: true,
-            FechaRegistro: new Date().toISOString()
-          });
-          marcarCambioYSubir();
-        };
-
-        window.toggleTerminalAdmin = function (id) {
-          const term = (estado.Terminales || []).find(t => t.Id === id);
-          if (!term) return;
-          term.Activa = term.Activa === false ? true : false;
-          marcarCambioYSubir();
-        };
-
-        window.eliminarTerminalAdmin = function (id) {
-          if (!confirm("¿Deseas quitar esta terminal registrada?")) return;
-          estado.Terminales = (estado.Terminales || []).filter(t => t.Id !== id);
-          marcarCambioYSubir();
-        };
-
-        // COMPRAS
-        window.renderCompras = function () {
-          const filtro = (document.getElementById("txtBuscarCompras").value || "").trim().toLowerCase();
-          const cont = document.getElementById("listaCompras");
-          const items = (estado.Inventario || []).filter(i =>
-            !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
-          );
-
-          if (items.length === 0) {
-            cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos para mostrar.</div></div>`;
-            return;
-          }
-
-          cont.innerHTML = items.map(i => {
-            const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
-            return `
-            <div class="card">
-              <div>
-                <div class="card-title">${escaparHtml(i.Nombre)}</div>
-                <div class="card-meta">Stock actual: <strong>${escaparHtml(formatearStock(i))}</strong></div>
-                <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
-              </div>
-              <div class="card-actions">
-                <button class="btn btn-success" type="button" onclick="abrirModalRestock('${i.Id}')">Reabastecer</button>
-              </div>
-            </div>
-          `;
-          }).join("");
-        };
-
-        window.abrirModalRestock = function (id) {
-          const insumo = (estado.Inventario || []).find(i => i.Id === id);
-          if (!insumo) return;
-
-          idRestockActual = insumo.Id;
-          restockModoMayor = false;
-
-          document.getElementById("restockTitulo").textContent = "Reabastecer: " + insumo.Nombre;
-          document.getElementById("txtRestockCantidad").value = "";
-          document.getElementById("txtRestockCosto").value = "";
-
-          const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
-          const modoBox = document.getElementById("restockModoBox");
-          const factorBox = document.getElementById("restockFactorBox");
-
-          if (insumo.ManejaPorciones) {
-            modoBox.classList.remove("hidden");
-            document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
-            document.getElementById("btnRestockModo1").textContent = `Peso (${insumo.UnidadMedida})`;
-            document.getElementById("btnRestockModo2").textContent = "Unidades (Piezas)";
-            document.getElementById("restockFactorLabel").textContent = "¿Cuántas piezas trae este kilo (o proporción)?";
-            document.getElementById("txtRestockFactor").value = insumo.PorcionesPorKilo || 0;
-          } else if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
-            modoBox.classList.remove("hidden");
-            document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
-            document.getElementById("btnRestockModo1").textContent = `Unidades sueltas (${insumo.UnidadMedida})`;
-            document.getElementById("btnRestockModo2").textContent = `Paquetes (habitual: ${insumo.UnidadesPorEmpaque})`;
-            document.getElementById("restockFactorLabel").textContent = "Unidades por paquete";
-            document.getElementById("txtRestockFactor").value = insumo.UnidadesPorEmpaque || 1;
-          } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
-            modoBox.classList.remove("hidden");
-            document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
-            document.getElementById("btnRestockModo1").textContent = "Gramos (g)";
-            document.getElementById("btnRestockModo2").textContent = "Kilogramos (kg)";
-          } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
-            modoBox.classList.remove("hidden");
-            document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
-            document.getElementById("btnRestockModo1").textContent = "Mililitros (ml)";
-            document.getElementById("btnRestockModo2").textContent = "Litros (L)";
-          } else {
-            modoBox.classList.add("hidden");
-          }
-
-          factorBox.classList.add("hidden");
-          actualizarEstilosRestockModo(insumo);
-          document.getElementById("modalRestock").classList.remove("hidden");
-        };
-
-        window.setRestockModoMayor = function (esMayor) {
-          restockModoMayor = esMayor;
-          const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
-          if (insumo) actualizarEstilosRestockModo(insumo);
-        };
-
-        function actualizarEstilosRestockModo(insumo) {
-          document.getElementById("btnRestockModo1").classList.toggle("active", !restockModoMayor);
-          document.getElementById("btnRestockModo2").classList.toggle("active", restockModoMayor);
-
-          const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
-          const factorBox = document.getElementById("restockFactorBox");
-
-          if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
-            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-              ? "Cantidad de paquetes a sumar:"
-              : `Cantidad de ${insumo.UnidadMedida} sueltas a sumar:`;
-            factorBox.classList.toggle("hidden", !restockModoMayor);
-          } else if (insumo.ManejaPorciones) {
-            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-              ? "Cantidad de unidades (piezas) a sumar:"
-              : `Cantidad a sumar (${insumo.UnidadMedida}):`;
-            factorBox.classList.toggle("hidden", !restockModoMayor);
-          } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
-            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-              ? "Cantidad a sumar (Kilogramos):"
-              : "Cantidad a sumar (Gramos):";
-            factorBox.classList.add("hidden");
-          } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
-            document.getElementById("lblRestockCantidad").textContent = restockModoMayor
-              ? "Cantidad a sumar (Litros):"
-              : "Cantidad a sumar (Mililitros):";
-            factorBox.classList.add("hidden");
-          } else {
-            document.getElementById("lblRestockCantidad").textContent = `Cantidad a sumar al Stock (${insumo.UnidadMedida}):`;
-            factorBox.classList.add("hidden");
-          }
-        }
-
-        window.cerrarModalRestock = function () {
-          document.getElementById("modalRestock").classList.add("hidden");
-          idRestockActual = null;
-        };
-
-        window.guardarRestock = function () {
-          const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
-          if (!insumo) return;
-
-          const cantIngresada = parseFloat(document.getElementById("txtRestockCantidad").value);
-          if (isNaN(cantIngresada) || cantIngresada <= 0) {
-            alert("Ingresa una cantidad válida a sumar.");
-            return;
-          }
-
-          let costoCompra = parseFloat(document.getElementById("txtRestockCosto").value);
-          if (isNaN(costoCompra) || costoCompra < 0) costoCompra = 0;
-
-          let cantReal = cantIngresada;
-          const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
-
-          if (restockModoMayor) {
-            const factorVal = parseFloat(document.getElementById("txtRestockFactor").value);
-            if (insumo.ManejaEmpaque) {
-              const porPaquete = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.UnidadesPorEmpaque) || 1);
-              cantReal = cantIngresada * porPaquete;
-            } else if (insumo.ManejaPorciones) {
-              const piezasPorKilo = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.PorcionesPorKilo) || 10);
-              const gramosPorUnidad = piezasPorKilo > 0 ? (1000 / piezasPorKilo) : 100;
-              cantReal = cantIngresada * gramosPorUnidad;
-            } else if (uLower.includes("gramo") || uLower.includes("kilo") || uLower.includes("mililitro") || uLower.includes("litro")) {
-              cantReal = cantIngresada * 1000;
-            }
-          }
-
-          const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
-          const { valorStockActual: costoTotalAnterior } = obtenerMetricasCostoActual(insumo);
-
-          const nuevoStockTotal = stockAnterior + cantReal;
-          const nuevoCostoTotalInventario = costoTotalAnterior + costoCompra;
-
-          insumo.StockActual = nuevoStockTotal;
-          insumo.CostoIngresado = nuevoCostoTotalInventario;
-          insumo.EsCostoTotal = true;
-
-          if (costoCompra > 0) {
-            registrarGastoInterno("Compra: " + insumo.Nombre, costoCompra);
-          }
-
-          cerrarModalRestock();
-          marcarCambioYSubir();
-        };
-
-        // INVENTARIO
-        window.renderInventario = function () {
-          const filtro = (document.getElementById("txtBuscarInventario").value || "").trim().toLowerCase();
-          const cont = document.getElementById("listaInventario");
-          const items = (estado.Inventario || []).filter(i =>
-            !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
-          );
-          const puedeEditar = estado.Permisos?.PermitirEditarInventario !== false;
-          const puedeMerma = estado.Permisos?.PermitirMerma !== false;
-
-          if (items.length === 0) {
-            cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos registrados.</div></div>`;
-            return;
-          }
-
-          cont.innerHTML = items.map(i => {
-            const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
-            return `
-            <div class="card">
-              <div>
-                <div class="card-title">${escaparHtml(i.Nombre)}</div>
-                <div class="card-meta">Stock: <strong>${escaparHtml(formatearStock(i))}</strong></div>
-                <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
-              </div>
-              <div class="card-actions">
-                ${puedeEditar ? `<button class="btn" type="button" onclick="abrirModalEditarInsumo('${i.Id}')">Editar</button>` : ""}
-                ${puedeMerma ? `<button class="btn btn-warning" type="button" onclick="abrirModalMerma('${i.Id}')">Merma</button>` : ""}
-                ${puedeEditar ? `<button class="btn btn-danger" type="button" onclick="eliminarInsumo('${i.Id}')">Eliminar</button>` : ""}
-              </div>
-            </div>
-          `;
-          }).join("");
-        };
-
-        window.abrirModalNuevoInsumo = function (origen) {
-          origenModalInsumo = origen || "Inventario";
-          idInsumoEditando = null;
-          document.getElementById("insumoModalTitulo").textContent = origen === "Compra" ? "Registrar Compra / Insumo" : "Registrar Insumo";
-          document.getElementById("txtInsumoNombre").value = "";
-          document.getElementById("txtInsumoStock").value = "";
-          document.getElementById("txtUnidadesEmpaque").value = "";
-          document.getElementById("txtPorcionesKilo").value = "";
-          document.getElementById("txtInsumoCosto").value = "";
-
-          setModoPesoForm(false);
-          setEsCostoTotalForm(true);
-          setUnidadForm("Unidad");
-          document.getElementById("modalInsumo").classList.remove("hidden");
-        };
-
-        window.abrirModalEditarInsumo = function (id) {
-          if (estado.Permisos?.PermitirEditarInventario === false) {
-            alert("La edición de inventario está desactivada en Admin.");
-            return;
-          }
-          const insumo = (estado.Inventario || []).find(i => i.Id === id);
-          if (!insumo) return;
-
-          origenModalInsumo = "Inventario";
-          idInsumoEditando = insumo.Id;
-          document.getElementById("insumoModalTitulo").textContent = "Modificar Insumo";
-          document.getElementById("txtInsumoNombre").value = insumo.Nombre || "";
-          document.getElementById("txtInsumoStock").value = insumo.StockActual ?? 0;
-          document.getElementById("txtUnidadesEmpaque").value = Number(insumo.UnidadesPorEmpaque) > 1 ? insumo.UnidadesPorEmpaque : "";
-          document.getElementById("txtPorcionesKilo").value = Number(insumo.PorcionesPorKilo) > 0 ? insumo.PorcionesPorKilo : "";
-          document.getElementById("txtInsumoCosto").value = insumo.CostoIngresado ?? 0;
-
-          setModoPesoForm(Boolean(insumo.ManejaPorciones));
-          setEsCostoTotalForm(insumo.EsCostoTotal !== false);
-          setUnidadForm(insumo.UnidadMedida || "Unidad");
-          document.getElementById("modalInsumo").classList.remove("hidden");
-        };
-
-        window.setModoPesoForm = function (esPeso) {
-          esModoPesoForm = esPeso;
-          document.getElementById("btnTipoUnitario").classList.toggle("active", !esPeso);
-          document.getElementById("btnTipoPeso").classList.toggle("active", esPeso);
-          document.getElementById("boxEmpaqueForm").classList.toggle("hidden", esPeso);
-          document.getElementById("boxPorcionesForm").classList.toggle("hidden", !esPeso);
-          document.getElementById("lblInsumoStock").textContent = esPeso ? "Cantidad (Kilos / Litros):" : "Cantidad:";
-        };
-
-        window.setUnidadForm = function (unidad) {
-          unidadFormSeleccionada = unidad;
-          document.querySelectorAll(".unidad-btn").forEach(btn => {
-            btn.classList.toggle("active", btn.dataset.unidad === unidad);
-          });
-        };
-
-        window.setEsCostoTotalForm = function (esTotal) {
-          esCostoTotalForm = esTotal;
-          document.getElementById("btnCostoTotal").classList.toggle("active", esTotal);
-          document.getElementById("btnCostoUnit").classList.toggle("active", !esTotal);
-          document.getElementById("lblInsumoCosto").textContent = esTotal ? "Valor ingresado ($):" : "Costo unitario ($):";
-        };
-
-        window.cerrarModalInsumo = function () {
-          document.getElementById("modalInsumo").classList.add("hidden");
-          idInsumoEditando = null;
-        };
-
-        window.guardarInsumoModal = function () {
-          const nombre = (document.getElementById("txtInsumoNombre").value || "").trim();
-          if (!nombre) {
-            alert("Debes ingresar un nombre para el insumo.");
-            return;
-          }
-
-          const stock = parseFloat(document.getElementById("txtInsumoStock").value) || 0;
-          const costo = parseFloat(document.getElementById("txtInsumoCosto").value) || 0;
-          const unidadesPaquete = parseFloat(document.getElementById("txtUnidadesEmpaque").value) || 1;
-          const porciones = parseFloat(document.getElementById("txtPorcionesKilo").value) || 0;
-
-          const manejaEmpaque = !esModoPesoForm && unidadesPaquete > 1;
-          const manejaPorciones = esModoPesoForm && porciones > 0;
-          const stockReal = manejaEmpaque && unidadesPaquete > 1 ? stock * unidadesPaquete : stock;
-
-          if (!idInsumoEditando) {
-            estado.Inventario.push({
-              Id: generarGuid(),
-              Nombre: nombre,
-              StockActual: stockReal,
-              UnidadMedida: unidadFormSeleccionada,
-              CostoIngresado: costo,
-              EsCostoTotal: esCostoTotalForm,
-              ManejaPorciones: manejaPorciones,
-              PorcionesPorKilo: porciones,
-              ManejaEmpaque: manejaEmpaque,
-              UnidadesPorEmpaque: unidadesPaquete
-            });
-
-            if (costo > 0) {
-              const montoGasto = esCostoTotalForm ? costo : (costo * stock);
-              registrarGastoInterno(origenModalInsumo === "Compra" ? "Compra: " + nombre : nombre, montoGasto);
-            }
-          } else {
-            const insumo = estado.Inventario.find(i => i.Id === idInsumoEditando);
-            if (insumo) {
-              insumo.Nombre = nombre;
-              insumo.StockActual = stockReal;
-              insumo.UnidadMedida = unidadFormSeleccionada;
-              insumo.CostoIngresado = costo;
-              insumo.EsCostoTotal = esCostoTotalForm;
-              insumo.ManejaPorciones = manejaPorciones;
-              insumo.PorcionesPorKilo = porciones;
-              insumo.ManejaEmpaque = manejaEmpaque;
-              insumo.UnidadesPorEmpaque = unidadesPaquete;
-            }
-          }
-
-          cerrarModalInsumo();
-          marcarCambioYSubir();
-        };
-
-        window.eliminarInsumo = function (id) {
-          if (estado.Permisos?.PermitirEditarInventario === false) {
-            alert("La eliminación de insumos está desactivada en Admin.");
-            return;
-          }
-          if (!confirm("¿Deseas eliminar este insumo?")) return;
-          estado.Inventario = (estado.Inventario || []).filter(i => i.Id !== id);
-          marcarCambioYSubir();
-        };
-
-        // MERMA
-        window.abrirModalMerma = function (id) {
-          if (estado.Permisos?.PermitirMerma === false) {
-            alert("El registro de mermas está desactivado en Admin.");
-            return;
-          }
-          const insumo = (estado.Inventario || []).find(i => i.Id === id);
-          if (!insumo) return;
-          idMermaActual = insumo.Id;
-          document.getElementById("mermaTitulo").textContent = "Merma: " + insumo.Nombre;
-          document.getElementById("mermaInfo").textContent = `Stock actual: ${formatearStock(insumo)}`;
-          document.getElementById("txtMermaCantidad").value = "";
-          document.getElementById("txtMermaMonto").value = "0";
-          document.getElementById("modalMerma").classList.remove("hidden");
-        };
-
-        window.cerrarModalMerma = function () {
-          document.getElementById("modalMerma").classList.add("hidden");
-          idMermaActual = null;
-        };
-
-        window.guardarMerma = function () {
-          const insumo = (estado.Inventario || []).find(i => i.Id === idMermaActual);
-          if (!insumo) return;
-
-          const cantMerma = parseFloat(document.getElementById("txtMermaCantidad").value);
-          if (isNaN(cantMerma) || cantMerma <= 0) {
-            alert("Ingresa una cantidad mayor a cero.");
-            return;
-          }
-
-          const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
-          const { costoUnitarioPromedio } = obtenerMetricasCostoActual(insumo);
-          const stockDescontado = Math.min(stockAnterior, cantMerma);
-          const nuevoStock = Math.max(0, stockAnterior - cantMerma);
-
-          insumo.StockActual = nuevoStock;
-          if (insumo.EsCostoTotal !== false) {
-            insumo.CostoIngresado = Math.max(0, (Number(insumo.CostoIngresado) || 0) - (stockDescontado * costoUnitarioPromedio));
-          }
-
-          const montoMerma = parseFloat(document.getElementById("txtMermaMonto").value) || 0;
-          if (montoMerma > 0) {
-            trasladarCompraAMermaInterno(insumo.Nombre, montoMerma);
-          }
-
-          cerrarModalMerma();
-          marcarCambioYSubir();
-        };
-
-        function trasladarCompraAMermaInterno(conceptoInsumo, montoMerma) {
-          if (montoMerma <= 0) return;
-          const nombreLimpio = (conceptoInsumo || "").trim();
-          const conceptoCompra = "Compra: " + nombreLimpio;
-
-          const compraReciente = (estado.Gastos || []).find(g =>
-            Number(g.Monto) > 0 &&
-            ((g.Concepto || "").toLowerCase() === conceptoCompra.toLowerCase() ||
-             (g.Concepto || "").toLowerCase() === nombreLimpio.toLowerCase())
-          );
-
-          let montoTrasladado = montoMerma;
-          if (compraReciente) {
-            const montoCompraActual = Number(compraReciente.Monto) || 0;
-            if (montoCompraActual > montoMerma) {
-              compraReciente.Monto = Math.round((montoCompraActual - montoMerma) * 100) / 100;
-            } else {
-              montoTrasladado = montoCompraActual;
-              estado.Gastos = estado.Gastos.filter(g => g.Id !== compraReciente.Id);
-            }
-          }
-
-          if (montoTrasladado > 0) {
-            const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
-            estado.Gastos.unshift({
-              Id: generarGuid(),
-              TurnoId: turno.Id,
-              FechaOperativa: turno.FechaOperativa,
-              FechaHoraRegistro: new Date().toISOString(),
-              Concepto: nombreLimpio ? "Merma: " + nombreLimpio : "Merma",
-              Monto: montoTrasladado
-            });
-          }
-        }
-
-        // CORTE DE CAJA
-        function obtenerFechaOperativa(fechaObj) {
-          const f = new Date(fechaObj);
-          if (f.getHours() < 6) {
-            f.setDate(f.getDate() - 1);
-          }
-          return f.toISOString().slice(0, 10) + "T00:00:00";
-        }
-
-        function obtenerTurnoAbierto() {
-          return (estado.Turnos || []).find(t => !t.FechaCierre);
-        }
-
-        function abrirTurnoInterno() {
-          const existente = obtenerTurnoAbierto();
-          if (existente) return existente;
-          const ahora = new Date();
-          const nuevo = {
-            Id: generarGuid(),
-            FechaApertura: ahora.toISOString(),
-            FechaCierre: null,
-            FechaOperativa: obtenerFechaOperativa(ahora)
-          };
-          estado.Turnos = estado.Turnos || [];
-          estado.Turnos.unshift(nuevo);
-          return nuevo;
-        }
-
-        function registrarGastoInterno(concepto, monto) {
-          if (!monto || monto <= 0) return;
-          const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
-          estado.Gastos = estado.Gastos || [];
-          estado.Gastos.unshift({
-            Id: generarGuid(),
-            TurnoId: turno.Id,
-            FechaOperativa: turno.FechaOperativa,
-            FechaHoraRegistro: new Date().toISOString(),
-            Concepto: (concepto || "Compra de insumos").trim(),
-            Monto: monto
-          });
-        }
-
-        window.toggleTurno = function () {
-          const actual = obtenerTurnoAbierto();
-          if (!actual) {
-            abrirTurnoInterno();
-            marcarCambioYSubir();
-          } else {
-            if (estado.Permisos?.PermitirCerrarTurno === false) {
-              alert("El cierre de turno está desactivado en Admin.");
-              return;
-            }
-            if (!confirm("¿Deseas cerrar el turno operativo actual y realizar el corte de caja?")) return;
-            actual.FechaCierre = new Date().toISOString();
-            marcarCambioYSubir();
-          }
-        };
-
-        window.registrarGastoManual = function () {
-          const concepto = prompt("Concepto o insumo comprado:");
-          if (concepto === null) return;
-          const montoStr = prompt("Monto del gasto ($):");
-          if (montoStr === null) return;
-          const monto = parseFloat(montoStr);
-          if (isNaN(monto) || monto <= 0) {
-            alert("Ingresa un monto válido mayor a 0.");
-            return;
-          }
-          registrarGastoInterno(concepto, monto);
-          marcarCambioYSubir();
-        };
-
-        window.cambiarPeriodo = function (per) {
-          periodoActual = per;
-          document.getElementById("filtroDia").classList.toggle("active", per === "Dia");
-          document.getElementById("filtroSemanal").classList.toggle("active", per === "Semanal");
-          document.getElementById("filtroMensual").classList.toggle("active", per === "Mensual");
-          renderCorte();
-        };
-
-        window.cambiarSubTabCorte = function (tab) {
-          subTabCorte = tab;
-          document.getElementById("subTabFacturas").classList.toggle("active", tab === "Facturas");
-          document.getElementById("subTabGastos").classList.toggle("active", tab === "Gastos");
-          document.getElementById("panelFacturas").classList.toggle("hidden", tab !== "Facturas");
-          document.getElementById("panelGastos").classList.toggle("hidden", tab !== "Gastos");
-        };
-
-        window.eliminarFactura = function (facturaId) {
-          if (estado.Permisos?.PermitirEliminarFactura === false) {
-            alert("La eliminación de facturas está desactivada en Admin.");
-            return;
-          }
-          if (!confirm("¿Deseas eliminar esta factura? Se restará del total de ventas y los insumos volverán al inventario.")) return;
-          const fac = (estado.Facturas || []).find(f => f.Id === facturaId);
-          if (!fac) return;
-
-          if (Array.isArray(fac.InsumosDescontados)) {
-            fac.InsumosDescontados.forEach(ing => {
-              const ins = (estado.Inventario || []).find(i => i.Id === ing.InsumoId);
-              if (ins) {
-                const cantDevuelta = Number(ing.Cantidad) || 0;
-                const { costoUnitarioPromedio } = obtenerMetricasCostoActual(ins);
-                ins.StockActual = (Number(ins.StockActual) || 0) + cantDevuelta;
-                if (ins.EsCostoTotal !== false) {
-                  ins.CostoIngresado = (Number(ins.CostoIngresado) || 0) + (cantDevuelta * costoUnitarioPromedio);
+                import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+                import {
+                  getAuth,
+                  GoogleAuthProvider,
+                  signInWithPopup,
+                  signOut,
+                  onAuthStateChanged
+                } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+                const firebaseConfig = {
+                  apiKey: "AIzaSyD_oOt_qQXqgoVrygBQuLrAZ2IBAkpEBdQ",
+                  authDomain: "viko-pos-app.firebaseapp.com",
+                  databaseURL: "https://viko-pos-app-default-rtdb.firebaseio.com",
+                  projectId: "viko-pos-app"
+                };
+
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const googleProvider = new GoogleAuthProvider();
+
+                let currentUser = null;
+                let idTokenActual = null;
+                let userKeyActual = null;
+
+                let estado = {
+                  Uid: "",
+                  Email: "",
+                  NombreNegocio: "",
+                  Rubro: "Comida Rápida",
+                  SucursalId: "Principal",
+                  Permisos: {
+                    PermitirEliminarFactura: true,
+                    PermitirMerma: true,
+                    PermitirCerrarTurno: true,
+                    PermitirEditarInventario: true
+                  },
+                  Terminales: [],
+                  FechaActualizacion: "1970-01-01T00:00:00.000Z",
+                  Inventario: [],
+                  ProductosVenta: [],
+                  Turnos: [],
+                  Facturas: [],
+                  Gastos: []
+                };
+
+                let hayCambiosPendientes = false;
+                let sincronizando = false;
+                let seccionActual = "Compras";
+                let periodoActual = "Dia";
+                let subTabCorte = "Facturas";
+                let modoOscuroActivo = false;
+
+                // Estado modales
+                let idRestockActual = null;
+                let restockModoMayor = false;
+
+                let idInsumoEditando = null;
+                let origenModalInsumo = "Inventario";
+                let esModoPesoForm = false;
+                let esCostoTotalForm = true;
+                let unidadFormSeleccionada = "Unidad";
+
+                let idMermaActual = null;
+
+                function normalizarEstado(remoto) {
+                  const r = remoto || {};
+                  return {
+                    Uid: r.Uid || currentUser?.uid || "",
+                    Email: r.Email || currentUser?.email || "",
+                    NombreNegocio: r.NombreNegocio || "",
+                    Rubro: r.Rubro || "Comida Rápida",
+                    SucursalId: r.SucursalId || "Principal",
+                    Permisos: {
+                      PermitirEliminarFactura: r.Permisos?.PermitirEliminarFactura !== false,
+                      PermitirMerma: r.Permisos?.PermitirMerma !== false,
+                      PermitirCerrarTurno: r.Permisos?.PermitirCerrarTurno !== false,
+                      PermitirEditarInventario: r.Permisos?.PermitirEditarInventario !== false
+                    },
+                    Terminales: Array.isArray(r.Terminales) ? r.Terminales : [],
+                    FechaActualizacion: r.FechaActualizacion || new Date().toISOString(),
+                    Inventario: Array.isArray(r.Inventario) ? r.Inventario : [],
+                    ProductosVenta: Array.isArray(r.ProductosVenta) ? r.ProductosVenta : [],
+                    Turnos: Array.isArray(r.Turnos) ? r.Turnos : [],
+                    Facturas: Array.isArray(r.Facturas) ? r.Facturas : [],
+                    Gastos: Array.isArray(r.Gastos) ? r.Gastos : []
+                  };
                 }
-              }
-            });
-          }
 
-          estado.Facturas = estado.Facturas.filter(f => f.Id !== facturaId);
-          marcarCambioYSubir();
-        };
+                function actualizarEncabezadoAdmin() {
+                  const negocioLimpio = (estado.NombreNegocio || "").trim();
+                  const mostrarNegocio = negocioLimpio && negocioLimpio.toLowerCase() !== "burger master"
+                    ? negocioLimpio
+                    : "Viko POS";
+                  document.getElementById("lblNegocio").textContent = mostrarNegocio;
+                  document.getElementById("lblRubroBadge").textContent = estado.Rubro || "Comida Rápida";
+                }
 
-        window.eliminarGasto = function (gastoId) {
-          if (!confirm("¿Deseas eliminar este recibo?")) return;
-          estado.Gastos = (estado.Gastos || []).filter(g => g.Id !== gastoId);
-          marcarCambioYSubir();
-        };
+                function obtenerClaveTemaUsuario() {
+                  return "viko_pos_dark_mode_" + (userKeyActual || "guest");
+                }
 
-        function obtenerRangoPeriodo() {
-          const turno = obtenerTurnoAbierto();
-          const refStr = turno?.FechaOperativa || obtenerFechaOperativa(new Date());
-          const refDate = new Date(refStr.slice(0, 10) + "T00:00:00");
+                function aplicarEstadoModoOscuro(activo) {
+                  modoOscuroActivo = Boolean(activo);
+                  document.body.classList.toggle("dark-mode", modoOscuroActivo);
+                  const btn = document.getElementById("btnModoOscuro");
+                  if (btn) {
+                    btn.textContent = modoOscuroActivo ? "Modo claro" : "Modo oscuro";
+                  }
+                }
 
-          let inicio = new Date(refDate);
-          let fin = new Date(refDate);
+                function cargarModoOscuroUsuario() {
+                  try {
+                    const guardado = localStorage.getItem(obtenerClaveTemaUsuario());
+                    aplicarEstadoModoOscuro(guardado === "1");
+                  } catch (e) {
+                    aplicarEstadoModoOscuro(false);
+                  }
+                }
 
-          if (periodoActual === "Semanal") {
-            const diffLunes = (refDate.getDay() + 6) % 7;
-            inicio.setDate(refDate.getDate() - diffLunes);
-            fin = new Date(inicio);
-            fin.setDate(inicio.getDate() + 6);
-          } else if (periodoActual === "Mensual") {
-            inicio = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
-            fin = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
-          }
+                window.toggleModoOscuro = function () {
+                  const siguiente = !modoOscuroActivo;
+                  aplicarEstadoModoOscuro(siguiente);
+                  try {
+                    localStorage.setItem(obtenerClaveTemaUsuario(), siguiente ? "1" : "0");
+                  } catch (e) {}
+                };
 
-          return {
-            inicioStr: inicio.toISOString().slice(0, 10),
-            finStr: fin.toISOString().slice(0, 10),
-            refStr: refStr.slice(0, 10),
-            turno
-          };
-        }
+                cargarModoOscuroUsuario();
 
-        window.renderCorte = function () {
-          const { inicioStr, finStr, refStr, turno } = obtenerRangoPeriodo();
+                function sanitizarClaveFirebase(email) {
+                  return email.trim().toLowerCase()
+                    .replaceAll(".", "_")
+                    .replaceAll("@", "_at_")
+                    .replaceAll("$", "_")
+                    .replaceAll("#", "_")
+                    .replaceAll("[", "_")
+                    .replaceAll("]", "_");
+                }
 
-          document.getElementById("lblEstadoTurno").textContent = turno
-            ? "Turno activo"
-            : "Sin turno abierto";
-          document.getElementById("lblFechaOperativa").textContent = "Día operativo de referencia: " + refStr;
-          document.getElementById("btnToggleTurno").textContent = turno ? "Cerrar Turno" : "Abrir Turno";
-          document.getElementById("btnToggleTurno").className = turno ? "btn btn-danger" : "btn btn-success";
+                function obtenerIdDispositivoLocal() {
+                  try {
+                    let id = localStorage.getItem("viko_pos_device_id");
+                    if (!id) {
+                      id = generarGuid().slice(0, 8).toUpperCase();
+                      localStorage.setItem("viko_pos_device_id", id);
+                    }
+                    return id;
+                  } catch (e) {
+                    return "";
+                  }
+                }
 
-          const facturasPeriodo = (estado.Facturas || []).filter(f => {
-            const fOp = (f.FechaOperativa || "").slice(0, 10);
-            return fOp >= inicioStr && fOp <= finStr;
-          });
+                async function verificarAccesoAutorizado(email, token) {
+                  const emailNorm = (email || "").trim().toLowerCase();
+                  if (!emailNorm || !token) return { permitido: false, motivo: "Sesión inválida." };
 
-          const gastosPeriodo = (estado.Gastos || []).filter(g => {
-            const gOp = (g.FechaOperativa || "").slice(0, 10);
-            return gOp >= inicioStr && gOp <= finStr;
-          });
+                  const resp = await fetch(`${firebaseConfig.databaseURL}/correos_permitidos.json?auth=${encodeURIComponent(token)}`);
+                  if (!resp.ok) {
+                    return { permitido: false, motivo: "No se pudo verificar correos_permitidos en Firebase." };
+                  }
 
-          const totalVentas = facturasPeriodo.reduce((acc, f) => acc + (Number(f.TotalCobrado) || 0), 0);
-          const totalGastos = gastosPeriodo.reduce((acc, g) => acc + (Number(g.Monto) || 0), 0);
-          const gananciaNeta = Math.round((totalVentas - totalGastos) * 100) / 100;
+                  const lista = await resp.json();
+                  let correoAutorizado = false;
+                  if (Array.isArray(lista)) {
+                    correoAutorizado = lista.some(c => String(c || "").trim().toLowerCase() === emailNorm);
+                  } else if (lista && typeof lista === "object") {
+                    correoAutorizado = Object.entries(lista).some(([k, v]) => {
+                      if (typeof v === "string") return v.trim().toLowerCase() === emailNorm;
+                      return v === true && String(k || "").trim().toLowerCase().replace("_at_", "@") === emailNorm;
+                    });
+                  }
 
-          document.getElementById("kpiVentas").textContent = formatearMoneda(totalVentas);
-          document.getElementById("kpiGastos").textContent = formatearMoneda(totalGastos);
-          const kpiGanEl = document.getElementById("kpiGanancia");
-          kpiGanEl.textContent = formatearMoneda(gananciaNeta);
-          kpiGanEl.style.color = gananciaNeta >= 0 ? "var(--success)" : "var(--danger)";
+                  if (!correoAutorizado) {
+                    return { permitido: false, motivo: "Acceso denegado: tu correo no está en correos_permitidos." };
+                  }
 
-          const panelFac = document.getElementById("panelFacturas");
-          if (facturasPeriodo.length === 0) {
-            panelFac.innerHTML = `<div class="card-meta">No hay facturas en este período.</div>`;
-          } else {
-            panelFac.innerHTML = facturasPeriodo.map(f => `
-              <div class="list-row">
-                <div>
-                  <strong>${formatearMoneda(f.TotalCobrado)}</strong> • ${escaparHtml(f.MetodoPago || "Efectivo")}
-                  <div class="card-meta">${escaparHtml(f.ResumenProductos || "")}</div>
-                </div>
-                <button class="btn btn-danger" type="button" onclick="eliminarFactura('${f.Id}')">Eliminar</button>
-              </div>
-            `).join("");
-          }
+                  const devId = obtenerIdDispositivoLocal();
+                  const userKey = sanitizarClaveFirebase(emailNorm);
+                  const dispResp = await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKey}.json?auth=${encodeURIComponent(token)}`);
+                  if (dispResp.ok) {
+                    const dispData = await dispResp.json();
+                    if (dispData && typeof dispData === "object") {
+                      const entradas = Object.entries(dispData);
+                      if (entradas.length > 0) {
+                        const match = entradas.find(([k, val]) => {
+                          const activo = typeof val === "object" && val !== null ? val.activo !== false : Boolean(val);
+                          return activo && (k === devId || (typeof val === "object" && val?.id === devId));
+                        });
+                        if (!match) {
+                          return { permitido: false, motivo: "Acceso denegado: este dispositivo no está autorizado." };
+                        }
+                      }
+                    }
+                  }
 
-          const panelGas = document.getElementById("panelGastos");
-          if (gastosPeriodo.length === 0) {
-            panelGas.innerHTML = `<div class="card-meta">No hay recibos de compra o merma en este período.</div>`;
-          } else {
-            panelGas.innerHTML = gastosPeriodo.map(g => `
-              <div class="list-row">
-                <div>
-                  <strong>${escaparHtml(g.Concepto || "Gasto")}</strong> — ${formatearMoneda(g.Monto)}
-                  <div class="card-meta">${escaparHtml((g.FechaHoraRegistro || "").replace("T", " ").slice(0, 16))}</div>
-                </div>
-                <button class="btn btn-danger" type="button" onclick="eliminarGasto('${g.Id}')">Eliminar</button>
-              </div>
-            `).join("");
-          }
-        };
+                  return { permitido: true, motivo: "" };
+                }
 
-        function escaparHtml(str) {
-          return String(str ?? "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;");
-        }
+                function generarGuid() {
+                  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+                  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+                    const r = (Math.random() * 16) | 0;
+                    const v = c === "x" ? r : (r & 0x3) | 0x8;
+                    return v.toString(16);
+                  });
+                }
+
+                function formatearMoneda(valor) {
+                  const num = Number(valor) || 0;
+                  return "$" + num.toLocaleString("es-CO", { maximumFractionDigits: 2 });
+                }
+
+                function obtenerMetricasCostoActual(insumo) {
+                  const stockActual = Math.max(0, Number(insumo.StockActual) || 0);
+                  const costoIngresado = Math.max(0, Number(insumo.CostoIngresado) || 0);
+                  const esCostoTotal = insumo.EsCostoTotal !== false;
+
+                  if (stockActual <= 0) {
+                    return {
+                      costoUnitarioPromedio: 0,
+                      valorStockActual: 0
+                    };
+                  }
+
+                  const valorStockActual = esCostoTotal
+                    ? costoIngresado
+                    : (costoIngresado * stockActual);
+
+                  const costoUnitarioPromedio = valorStockActual / stockActual;
+
+                  return {
+                    costoUnitarioPromedio,
+                    valorStockActual
+                  };
+                }
+
+                function setSyncStatus(texto) {
+                  const el = document.getElementById("lblSyncStatus");
+                  if (el) el.textContent = texto;
+                }
+
+                document.getElementById("btnGoogleLogin").addEventListener("click", async () => {
+                  const errEl = document.getElementById("loginError");
+                  errEl.textContent = "";
+                  try {
+                    await signInWithPopup(auth, googleProvider);
+                  } catch (err) {
+                    errEl.textContent = err?.message || "No se pudo iniciar sesión con Google.";
+                  }
+                });
+
+                window.cerrarSesion = async function () {
+                  await signOut(auth);
+                };
+
+                onAuthStateChanged(auth, async (user) => {
+                  if (!user || !user.email) {
+                    currentUser = null;
+                    idTokenActual = null;
+                    userKeyActual = null;
+                    cargarModoOscuroUsuario();
+                    document.getElementById("loginView").classList.remove("hidden");
+                    document.getElementById("appView").classList.add("hidden");
+                    return;
+                  }
+
+                  const token = await user.getIdToken(true);
+                  const acceso = await verificarAccesoAutorizado(user.email, token);
+                  if (!acceso.permitido) {
+                    document.getElementById("loginError").textContent = acceso.motivo;
+                    await signOut(auth);
+                    return;
+                  }
+
+                  currentUser = user;
+                  userKeyActual = sanitizarClaveFirebase(user.email);
+                  cargarModoOscuroUsuario();
+                  idTokenActual = token;
+
+                  document.getElementById("loginError").textContent = "";
+                  document.getElementById("loginView").classList.add("hidden");
+                  document.getElementById("appView").classList.remove("hidden");
+                  document.getElementById("lblUsuarioEmail").textContent = user.email;
+
+                  await descargarRemoto(true);
+                  renderTodo();
+                });
+
+                setInterval(async () => {
+                  if (!currentUser || sincronizando || hayCambiosPendientes) return;
+                  await descargarRemoto(false);
+                }, 5000);
+
+                window.sincronizarManual = async function () {
+                  if (!currentUser) return;
+                  if (hayCambiosPendientes) {
+                    await subirCambios();
+                  }
+                  await descargarRemoto(true);
+                };
+
+                async function refrescarTokenSiNecesario() {
+                  if (!currentUser) return null;
+                  idTokenActual = await currentUser.getIdToken(false);
+                  return idTokenActual;
+                }
+
+                async function descargarRemoto(forzarRender) {
+                  if (!currentUser || !userKeyActual || sincronizando || hayCambiosPendientes) return;
+                  sincronizando = true;
+                  try {
+                    const token = await refrescarTokenSiNecesario();
+                    if (!token) return;
+
+                    const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
+                    const resp = await fetch(url);
+                    if (!resp.ok) {
+                      setSyncStatus("Error al leer Firebase (" + resp.status + ")");
+                      return;
+                    }
+
+                    const remoto = await resp.json();
+                    if (!remoto) {
+                      setSyncStatus("Sin datos previos en nube • Listo");
+                      return;
+                    }
+
+                    const fechaRemota = Date.parse(remoto.FechaActualizacion || 0) || 0;
+                    const fechaLocal = Date.parse(estado.FechaActualizacion || 0) || 0;
+
+                    if (fechaRemota > fechaLocal || forzarRender) {
+                      estado = normalizarEstado(remoto);
+                      actualizarEncabezadoAdmin();
+                      renderTodo();
+                    }
+
+                    const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                    setSyncStatus("Sincronizado • " + hora);
+                  } catch (e) {
+                    setSyncStatus("Sin conexión con Firebase");
+                  } finally {
+                    sincronizando = false;
+                  }
+                }
+
+                function marcarCambioYSubir() {
+                  estado.Uid = currentUser?.uid || estado.Uid;
+                  estado.Email = currentUser?.email || estado.Email;
+                  estado.FechaActualizacion = new Date().toISOString();
+                  hayCambiosPendientes = true;
+                  actualizarEncabezadoAdmin();
+                  renderTodo();
+                  subirCambios();
+                }
+
+                async function subirCambios() {
+                  if (!currentUser || !userKeyActual) return;
+                  sincronizando = true;
+                  setSyncStatus("Subiendo cambios...");
+                  try {
+                    const token = await currentUser.getIdToken(true);
+                    idTokenActual = token;
+                    const url = `${firebaseConfig.databaseURL}/usuarios/${userKeyActual}.json?auth=${encodeURIComponent(token)}`;
+                    const resp = await fetch(url, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(estado)
+                    });
+                    if (resp.ok) {
+                      hayCambiosPendientes = false;
+                      const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                      setSyncStatus("Guardado y sincronizado • " + hora);
+                    } else {
+                      setSyncStatus("Error al guardar en Firebase (" + resp.status + ")");
+                    }
+                  } catch (e) {
+                    setSyncStatus("Cambio pendiente (sin red)");
+                  } finally {
+                    sincronizando = false;
+                  }
+                }
+
+                // Navegación
+                window.cambiarSeccion = function (sec) {
+                  seccionActual = sec;
+                  document.getElementById("tabAdmin").classList.toggle("active", sec === "Admin");
+                  document.getElementById("tabCompras").classList.toggle("active", sec === "Compras");
+                  document.getElementById("tabInventario").classList.toggle("active", sec === "Inventario");
+                  document.getElementById("tabCorte").classList.toggle("active", sec === "Corte");
+
+                  document.getElementById("secAdmin").classList.toggle("hidden", sec !== "Admin");
+                  document.getElementById("secCompras").classList.toggle("hidden", sec !== "Compras");
+                  document.getElementById("secInventario").classList.toggle("hidden", sec !== "Inventario");
+                  document.getElementById("secCorte").classList.toggle("hidden", sec !== "Corte");
+
+                  renderTodo();
+                };
+
+                function renderTodo() {
+                  if (seccionActual === "Admin") renderAdmin();
+                  else if (seccionActual === "Compras") renderCompras();
+                  else if (seccionActual === "Inventario") renderInventario();
+                  else if (seccionActual === "Corte") renderCorte();
+                }
+
+                function formatearStock(insumo) {
+                  const stock = Number(insumo.StockActual) || 0;
+                  const unidad = insumo.UnidadMedida || "Unidad";
+                  return `${stock} ${unidad}`;
+                }
+
+                // ADMIN
+                window.renderAdmin = function () {
+                  estado = normalizarEstado(estado);
+                  document.getElementById("txtAdminNegocio").value = estado.NombreNegocio || "";
+                  document.getElementById("selAdminRubro").value = estado.Rubro || "Comida Rápida";
+                  document.getElementById("txtAdminSucursal").value = estado.SucursalId || "Principal";
+
+                  document.getElementById("chkPermEliminarFactura").checked = estado.Permisos.PermitirEliminarFactura !== false;
+                  document.getElementById("chkPermMerma").checked = estado.Permisos.PermitirMerma !== false;
+                  document.getElementById("chkPermCerrarTurno").checked = estado.Permisos.PermitirCerrarTurno !== false;
+                  document.getElementById("chkPermEditarInventario").checked = estado.Permisos.PermitirEditarInventario !== false;
+
+                  const totalInsumos = (estado.Inventario || []).length;
+                  const totalFacturas = (estado.Facturas || []).length;
+                  const totalTerminales = (estado.Terminales || []).length;
+                  document.getElementById("lblAdminResumenEstado").textContent =
+                    `Rubro: ${estado.Rubro} • Sucursal: ${estado.SucursalId} • Insumos: ${totalInsumos} • Facturas: ${totalFacturas} • Terminales: ${totalTerminales}`;
+
+                  const contTerm = document.getElementById("listaTerminalesAdmin");
+                  if (!estado.Terminales.length) {
+                    contTerm.innerHTML = `<div class="card-meta">No hay terminales registradas todavía. Usa "+ Registrar Terminal Actual" para agregar este equipo.</div>`;
+                    return;
+                  }
+
+                  contTerm.innerHTML = estado.Terminales.map(t => {
+                    const activa = t.Activa !== false;
+                    return `
+                      <div class="list-row">
+                        <div>
+                          <strong>${escaparHtml(t.Nombre || "Terminal Web")}</strong> • <span class="card-meta">ID: ${escaparHtml(t.Id || "")}</span>
+                          <div class="card-meta">Sucursal: ${escaparHtml(t.SucursalId || estado.SucursalId)} • Estado: <strong>${activa ? "Activa" : "Desactivada"}</strong></div>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                          <button class="btn ${activa ? "btn-warning" : "btn-success"}" type="button" onclick="toggleTerminalAdmin('${t.Id}')">${activa ? "Desactivar" : "Activar"}</button>
+                          <button class="btn btn-danger" type="button" onclick="eliminarTerminalAdmin('${t.Id}')">Quitar</button>
+                        </div>
+                      </div>
+                    `;
+                  }).join("");
+                };
+
+                window.guardarConfigAdmin = function () {
+                  const nombre = (document.getElementById("txtAdminNegocio").value || "").trim();
+                  const rubro = document.getElementById("selAdminRubro").value || "Comida Rápida";
+                  const sucursal = (document.getElementById("txtAdminSucursal").value || "").trim() || "Principal";
+
+                  estado.NombreNegocio = nombre;
+                  estado.Rubro = rubro;
+                  estado.SucursalId = sucursal;
+                  marcarCambioYSubir();
+                };
+
+                window.actualizarPermisoAdmin = function (clave, valor) {
+                  estado.Permisos = estado.Permisos || {};
+                  estado.Permisos[clave] = Boolean(valor);
+                  marcarCambioYSubir();
+                };
+
+                window.registrarTerminalActual = function () {
+                  const nombreSugerido = navigator.platform ? `Web (${navigator.platform})` : "Terminal Web";
+                  const nombre = prompt("Nombre de esta terminal:", nombreSugerido);
+                  if (nombre === null) return;
+
+                  estado.Terminales = estado.Terminales || [];
+                  estado.Terminales.unshift({
+                    Id: generarGuid().slice(0, 8).toUpperCase(),
+                    Nombre: (nombre || nombreSugerido).trim(),
+                    SucursalId: estado.SucursalId || "Principal",
+                    Activa: true,
+                    FechaRegistro: new Date().toISOString()
+                  });
+                  marcarCambioYSubir();
+                };
+
+                window.toggleTerminalAdmin = function (id) {
+                  const term = (estado.Terminales || []).find(t => t.Id === id);
+                  if (!term) return;
+                  term.Activa = term.Activa === false ? true : false;
+                  marcarCambioYSubir();
+                };
+
+                window.eliminarTerminalAdmin = function (id) {
+                  if (!confirm("¿Deseas quitar esta terminal registrada?")) return;
+                  estado.Terminales = (estado.Terminales || []).filter(t => t.Id !== id);
+                  marcarCambioYSubir();
+                };
+
+                // COMPRAS
+                window.renderCompras = function () {
+                  const filtro = (document.getElementById("txtBuscarCompras").value || "").trim().toLowerCase();
+                  const cont = document.getElementById("listaCompras");
+                  const items = (estado.Inventario || []).filter(i =>
+                    !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
+                  );
+
+                  if (items.length === 0) {
+                    cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos para mostrar.</div></div>`;
+                    return;
+                  }
+
+                  cont.innerHTML = items.map(i => {
+                    const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
+                    return `
+                    <div class="card">
+                      <div>
+                        <div class="card-title">${escaparHtml(i.Nombre)}</div>
+                        <div class="card-meta">Stock actual: <strong>${escaparHtml(formatearStock(i))}</strong></div>
+                        <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
+                      </div>
+                      <div class="card-actions">
+                        <button class="btn btn-success" type="button" onclick="abrirModalRestock('${i.Id}')">Reabastecer</button>
+                      </div>
+                    </div>
+                  `;
+                  }).join("");
+                };
+
+                window.abrirModalRestock = function (id) {
+                  const insumo = (estado.Inventario || []).find(i => i.Id === id);
+                  if (!insumo) return;
+
+                  idRestockActual = insumo.Id;
+                  restockModoMayor = false;
+
+                  document.getElementById("restockTitulo").textContent = "Reabastecer: " + insumo.Nombre;
+                  document.getElementById("txtRestockCantidad").value = "";
+                  document.getElementById("txtRestockCosto").value = "";
+
+                  const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
+                  const modoBox = document.getElementById("restockModoBox");
+                  const factorBox = document.getElementById("restockFactorBox");
+
+                  if (insumo.ManejaPorciones) {
+                    modoBox.classList.remove("hidden");
+                    document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
+                    document.getElementById("btnRestockModo1").textContent = `Peso (${insumo.UnidadMedida})`;
+                    document.getElementById("btnRestockModo2").textContent = "Unidades (Piezas)";
+                    document.getElementById("restockFactorLabel").textContent = "¿Cuántas piezas trae este kilo (o proporción)?";
+                    document.getElementById("txtRestockFactor").value = insumo.PorcionesPorKilo || 0;
+                  } else if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
+                    modoBox.classList.remove("hidden");
+                    document.getElementById("restockModoLabel").textContent = "¿Cómo estás ingresando esta compra?";
+                    document.getElementById("btnRestockModo1").textContent = `Unidades sueltas (${insumo.UnidadMedida})`;
+                    document.getElementById("btnRestockModo2").textContent = `Paquetes (habitual: ${insumo.UnidadesPorEmpaque})`;
+                    document.getElementById("restockFactorLabel").textContent = "Unidades por paquete";
+                    document.getElementById("txtRestockFactor").value = insumo.UnidadesPorEmpaque || 1;
+                  } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
+                    modoBox.classList.remove("hidden");
+                    document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
+                    document.getElementById("btnRestockModo1").textContent = "Gramos (g)";
+                    document.getElementById("btnRestockModo2").textContent = "Kilogramos (kg)";
+                  } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
+                    modoBox.classList.remove("hidden");
+                    document.getElementById("restockModoLabel").textContent = "¿En qué unidad viene esta compra?";
+                    document.getElementById("btnRestockModo1").textContent = "Mililitros (ml)";
+                    document.getElementById("btnRestockModo2").textContent = "Litros (L)";
+                  } else {
+                    modoBox.classList.add("hidden");
+                  }
+
+                  factorBox.classList.add("hidden");
+                  actualizarEstilosRestockModo(insumo);
+                  document.getElementById("modalRestock").classList.remove("hidden");
+                };
+
+                window.setRestockModoMayor = function (esMayor) {
+                  restockModoMayor = esMayor;
+                  const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
+                  if (insumo) actualizarEstilosRestockModo(insumo);
+                };
+
+                function actualizarEstilosRestockModo(insumo) {
+                  document.getElementById("btnRestockModo1").classList.toggle("active", !restockModoMayor);
+                  document.getElementById("btnRestockModo2").classList.toggle("active", restockModoMayor);
+
+                  const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
+                  const factorBox = document.getElementById("restockFactorBox");
+
+                  if (insumo.ManejaEmpaque && Number(insumo.UnidadesPorEmpaque) > 1) {
+                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                      ? "Cantidad de paquetes a sumar:"
+                      : `Cantidad de ${insumo.UnidadMedida} sueltas a sumar:`;
+                    factorBox.classList.toggle("hidden", !restockModoMayor);
+                  } else if (insumo.ManejaPorciones) {
+                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                      ? "Cantidad de unidades (piezas) a sumar:"
+                      : `Cantidad a sumar (${insumo.UnidadMedida}):`;
+                    factorBox.classList.toggle("hidden", !restockModoMayor);
+                  } else if (uLower.includes("gramo") || uLower.includes("kilo")) {
+                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                      ? "Cantidad a sumar (Kilogramos):"
+                      : "Cantidad a sumar (Gramos):";
+                    factorBox.classList.add("hidden");
+                  } else if (uLower.includes("mililitro") || uLower.includes("litro") || uLower.includes("ml")) {
+                    document.getElementById("lblRestockCantidad").textContent = restockModoMayor
+                      ? "Cantidad a sumar (Litros):"
+                      : "Cantidad a sumar (Mililitros):";
+                    factorBox.classList.add("hidden");
+                  } else {
+                    document.getElementById("lblRestockCantidad").textContent = `Cantidad a sumar al Stock (${insumo.UnidadMedida}):`;
+                    factorBox.classList.add("hidden");
+                  }
+                }
+
+                window.cerrarModalRestock = function () {
+                  document.getElementById("modalRestock").classList.add("hidden");
+                  idRestockActual = null;
+                };
+
+                window.guardarRestock = function () {
+                  const insumo = (estado.Inventario || []).find(i => i.Id === idRestockActual);
+                  if (!insumo) return;
+
+                  const cantIngresada = parseFloat(document.getElementById("txtRestockCantidad").value);
+                  if (isNaN(cantIngresada) || cantIngresada <= 0) {
+                    alert("Ingresa una cantidad válida a sumar.");
+                    return;
+                  }
+
+                  let costoCompra = parseFloat(document.getElementById("txtRestockCosto").value);
+                  if (isNaN(costoCompra) || costoCompra < 0) costoCompra = 0;
+
+                  let cantReal = cantIngresada;
+                  const uLower = (insumo.UnidadMedida || "").trim().toLowerCase();
+
+                  if (restockModoMayor) {
+                    const factorVal = parseFloat(document.getElementById("txtRestockFactor").value);
+                    if (insumo.ManejaEmpaque) {
+                      const porPaquete = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.UnidadesPorEmpaque) || 1);
+                      cantReal = cantIngresada * porPaquete;
+                    } else if (insumo.ManejaPorciones) {
+                      const piezasPorKilo = (!isNaN(factorVal) && factorVal > 0) ? factorVal : (Number(insumo.PorcionesPorKilo) || 10);
+                      const gramosPorUnidad = piezasPorKilo > 0 ? (1000 / piezasPorKilo) : 100;
+                      cantReal = cantIngresada * gramosPorUnidad;
+                    } else if (uLower.includes("gramo") || uLower.includes("kilo") || uLower.includes("mililitro") || uLower.includes("litro")) {
+                      cantReal = cantIngresada * 1000;
+                    }
+                  }
+
+                  const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
+                  const { valorStockActual: costoTotalAnterior } = obtenerMetricasCostoActual(insumo);
+
+                  const nuevoStockTotal = stockAnterior + cantReal;
+                  const nuevoCostoTotalInventario = costoTotalAnterior + costoCompra;
+
+                  insumo.StockActual = nuevoStockTotal;
+                  insumo.CostoIngresado = nuevoCostoTotalInventario;
+                  insumo.EsCostoTotal = true;
+
+                  if (costoCompra > 0) {
+                    registrarGastoInterno("Compra: " + insumo.Nombre, costoCompra);
+                  }
+
+                  cerrarModalRestock();
+                  marcarCambioYSubir();
+                };
+
+                // INVENTARIO
+                window.renderInventario = function () {
+                  const filtro = (document.getElementById("txtBuscarInventario").value || "").trim().toLowerCase();
+                  const cont = document.getElementById("listaInventario");
+                  const items = (estado.Inventario || []).filter(i =>
+                    !filtro || (i.Nombre || "").toLowerCase().includes(filtro)
+                  );
+                  const puedeEditar = estado.Permisos?.PermitirEditarInventario !== false;
+                  const puedeMerma = estado.Permisos?.PermitirMerma !== false;
+
+                  if (items.length === 0) {
+                    cont.innerHTML = `<div class="card"><div class="card-meta">No hay insumos registrados.</div></div>`;
+                    return;
+                  }
+
+                  cont.innerHTML = items.map(i => {
+                    const { costoUnitarioPromedio, valorStockActual } = obtenerMetricasCostoActual(i);
+                    return `
+                    <div class="card">
+                      <div>
+                        <div class="card-title">${escaparHtml(i.Nombre)}</div>
+                        <div class="card-meta">Stock: <strong>${escaparHtml(formatearStock(i))}</strong></div>
+                        <div class="card-meta">Costo unit.: ${formatearMoneda(costoUnitarioPromedio)} • Stock actual: ${formatearMoneda(valorStockActual)}</div>
+                      </div>
+                      <div class="card-actions">
+                        ${puedeEditar ? `<button class="btn" type="button" onclick="abrirModalEditarInsumo('${i.Id}')">Editar</button>` : ""}
+                        ${puedeMerma ? `<button class="btn btn-warning" type="button" onclick="abrirModalMerma('${i.Id}')">Merma</button>` : ""}
+                        ${puedeEditar ? `<button class="btn btn-danger" type="button" onclick="eliminarInsumo('${i.Id}')">Eliminar</button>` : ""}
+                      </div>
+                    </div>
+                  `;
+                  }).join("");
+                };
+
+                window.abrirModalNuevoInsumo = function (origen) {
+                  origenModalInsumo = origen || "Inventario";
+                  idInsumoEditando = null;
+                  document.getElementById("insumoModalTitulo").textContent = origen === "Compra" ? "Registrar Compra / Insumo" : "Registrar Insumo";
+                  document.getElementById("txtInsumoNombre").value = "";
+                  document.getElementById("txtInsumoStock").value = "";
+                  document.getElementById("txtUnidadesEmpaque").value = "";
+                  document.getElementById("txtPorcionesKilo").value = "";
+                  document.getElementById("txtInsumoCosto").value = "";
+
+                  setModoPesoForm(false);
+                  setEsCostoTotalForm(true);
+                  setUnidadForm("Unidad");
+                  document.getElementById("modalInsumo").classList.remove("hidden");
+                };
+
+                window.abrirModalEditarInsumo = function (id) {
+                  if (estado.Permisos?.PermitirEditarInventario === false) {
+                    alert("La edición de inventario está desactivada en Admin.");
+                    return;
+                  }
+                  const insumo = (estado.Inventario || []).find(i => i.Id === id);
+                  if (!insumo) return;
+
+                  origenModalInsumo = "Inventario";
+                  idInsumoEditando = insumo.Id;
+                  document.getElementById("insumoModalTitulo").textContent = "Modificar Insumo";
+                  document.getElementById("txtInsumoNombre").value = insumo.Nombre || "";
+                  document.getElementById("txtInsumoStock").value = insumo.StockActual ?? 0;
+                  document.getElementById("txtUnidadesEmpaque").value = Number(insumo.UnidadesPorEmpaque) > 1 ? insumo.UnidadesPorEmpaque : "";
+                  document.getElementById("txtPorcionesKilo").value = Number(insumo.PorcionesPorKilo) > 0 ? insumo.PorcionesPorKilo : "";
+                  document.getElementById("txtInsumoCosto").value = insumo.CostoIngresado ?? 0;
+
+                  setModoPesoForm(Boolean(insumo.ManejaPorciones));
+                  setEsCostoTotalForm(insumo.EsCostoTotal !== false);
+                  setUnidadForm(insumo.UnidadMedida || "Unidad");
+                  document.getElementById("modalInsumo").classList.remove("hidden");
+                };
+
+                window.setModoPesoForm = function (esPeso) {
+                  esModoPesoForm = esPeso;
+                  document.getElementById("btnTipoUnitario").classList.toggle("active", !esPeso);
+                  document.getElementById("btnTipoPeso").classList.toggle("active", esPeso);
+                  document.getElementById("boxEmpaqueForm").classList.toggle("hidden", esPeso);
+                  document.getElementById("boxPorcionesForm").classList.toggle("hidden", !esPeso);
+                  document.getElementById("lblInsumoStock").textContent = esPeso ? "Cantidad (Kilos / Litros):" : "Cantidad:";
+                };
+
+                window.setUnidadForm = function (unidad) {
+                  unidadFormSeleccionada = unidad;
+                  document.querySelectorAll(".unidad-btn").forEach(btn => {
+                    btn.classList.toggle("active", btn.dataset.unidad === unidad);
+                  });
+                };
+
+                window.setEsCostoTotalForm = function (esTotal) {
+                  esCostoTotalForm = esTotal;
+                  document.getElementById("btnCostoTotal").classList.toggle("active", esTotal);
+                  document.getElementById("btnCostoUnit").classList.toggle("active", !esTotal);
+                  document.getElementById("lblInsumoCosto").textContent = esTotal ? "Valor ingresado ($):" : "Costo unitario ($):";
+                };
+
+                window.cerrarModalInsumo = function () {
+                  document.getElementById("modalInsumo").classList.add("hidden");
+                  idInsumoEditando = null;
+                };
+
+                window.guardarInsumoModal = function () {
+                  const nombre = (document.getElementById("txtInsumoNombre").value || "").trim();
+                  if (!nombre) {
+                    alert("Debes ingresar un nombre para el insumo.");
+                    return;
+                  }
+
+                  const stock = parseFloat(document.getElementById("txtInsumoStock").value) || 0;
+                  const costo = parseFloat(document.getElementById("txtInsumoCosto").value) || 0;
+                  const unidadesPaquete = parseFloat(document.getElementById("txtUnidadesEmpaque").value) || 1;
+                  const porciones = parseFloat(document.getElementById("txtPorcionesKilo").value) || 0;
+
+                  const manejaEmpaque = !esModoPesoForm && unidadesPaquete > 1;
+                  const manejaPorciones = esModoPesoForm && porciones > 0;
+                  const stockReal = manejaEmpaque && unidadesPaquete > 1 ? stock * unidadesPaquete : stock;
+
+                  if (!idInsumoEditando) {
+                    estado.Inventario.push({
+                      Id: generarGuid(),
+                      Nombre: nombre,
+                      StockActual: stockReal,
+                      UnidadMedida: unidadFormSeleccionada,
+                      CostoIngresado: costo,
+                      EsCostoTotal: esCostoTotalForm,
+                      ManejaPorciones: manejaPorciones,
+                      PorcionesPorKilo: porciones,
+                      ManejaEmpaque: manejaEmpaque,
+                      UnidadesPorEmpaque: unidadesPaquete
+                    });
+
+                    if (costo > 0) {
+                      const montoGasto = esCostoTotalForm ? costo : (costo * stock);
+                      registrarGastoInterno(origenModalInsumo === "Compra" ? "Compra: " + nombre : nombre, montoGasto);
+                    }
+                  } else {
+                    const insumo = estado.Inventario.find(i => i.Id === idInsumoEditando);
+                    if (insumo) {
+                      insumo.Nombre = nombre;
+                      insumo.StockActual = stockReal;
+                      insumo.UnidadMedida = unidadFormSeleccionada;
+                      insumo.CostoIngresado = costo;
+                      insumo.EsCostoTotal = esCostoTotalForm;
+                      insumo.ManejaPorciones = manejaPorciones;
+                      insumo.PorcionesPorKilo = porciones;
+                      insumo.ManejaEmpaque = manejaEmpaque;
+                      insumo.UnidadesPorEmpaque = unidadesPaquete;
+                    }
+                  }
+
+                  cerrarModalInsumo();
+                  marcarCambioYSubir();
+                };
+
+                window.eliminarInsumo = function (id) {
+                  if (estado.Permisos?.PermitirEditarInventario === false) {
+                    alert("La eliminación de insumos está desactivada en Admin.");
+                    return;
+                  }
+                  if (!confirm("¿Deseas eliminar este insumo?")) return;
+                  estado.Inventario = (estado.Inventario || []).filter(i => i.Id !== id);
+                  marcarCambioYSubir();
+                };
+
+                // MERMA
+                window.abrirModalMerma = function (id) {
+                  if (estado.Permisos?.PermitirMerma === false) {
+                    alert("El registro de mermas está desactivado en Admin.");
+                    return;
+                  }
+                  const insumo = (estado.Inventario || []).find(i => i.Id === id);
+                  if (!insumo) return;
+                  idMermaActual = insumo.Id;
+                  document.getElementById("mermaTitulo").textContent = "Merma: " + insumo.Nombre;
+                  document.getElementById("mermaInfo").textContent = `Stock actual: ${formatearStock(insumo)}`;
+                  document.getElementById("txtMermaCantidad").value = "";
+                  document.getElementById("txtMermaMonto").value = "0";
+                  document.getElementById("modalMerma").classList.remove("hidden");
+                };
+
+                window.cerrarModalMerma = function () {
+                  document.getElementById("modalMerma").classList.add("hidden");
+                  idMermaActual = null;
+                };
+
+                window.guardarMerma = function () {
+                  const insumo = (estado.Inventario || []).find(i => i.Id === idMermaActual);
+                  if (!insumo) return;
+
+                  const cantMerma = parseFloat(document.getElementById("txtMermaCantidad").value);
+                  if (isNaN(cantMerma) || cantMerma <= 0) {
+                    alert("Ingresa una cantidad mayor a cero.");
+                    return;
+                  }
+
+                  const stockAnterior = Math.max(0, Number(insumo.StockActual) || 0);
+                  const { costoUnitarioPromedio } = obtenerMetricasCostoActual(insumo);
+                  const stockDescontado = Math.min(stockAnterior, cantMerma);
+                  const nuevoStock = Math.max(0, stockAnterior - cantMerma);
+
+                  insumo.StockActual = nuevoStock;
+                  if (insumo.EsCostoTotal !== false) {
+                    insumo.CostoIngresado = Math.max(0, (Number(insumo.CostoIngresado) || 0) - (stockDescontado * costoUnitarioPromedio));
+                  }
+
+                  const montoMerma = parseFloat(document.getElementById("txtMermaMonto").value) || 0;
+                  if (montoMerma > 0) {
+                    trasladarCompraAMermaInterno(insumo.Nombre, montoMerma);
+                  }
+
+                  cerrarModalMerma();
+                  marcarCambioYSubir();
+                };
+
+                function trasladarCompraAMermaInterno(conceptoInsumo, montoMerma) {
+                  if (montoMerma <= 0) return;
+                  const nombreLimpio = (conceptoInsumo || "").trim();
+                  const conceptoCompra = "Compra: " + nombreLimpio;
+
+                  const compraReciente = (estado.Gastos || []).find(g =>
+                    Number(g.Monto) > 0 &&
+                    ((g.Concepto || "").toLowerCase() === conceptoCompra.toLowerCase() ||
+                     (g.Concepto || "").toLowerCase() === nombreLimpio.toLowerCase())
+                  );
+
+                  let montoTrasladado = montoMerma;
+                  if (compraReciente) {
+                    const montoCompraActual = Number(compraReciente.Monto) || 0;
+                    if (montoCompraActual > montoMerma) {
+                      compraReciente.Monto = Math.round((montoCompraActual - montoMerma) * 100) / 100;
+                    } else {
+                      montoTrasladado = montoCompraActual;
+                      estado.Gastos = estado.Gastos.filter(g => g.Id !== compraReciente.Id);
+                    }
+                  }
+
+                  if (montoTrasladado > 0) {
+                    const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
+                    estado.Gastos.unshift({
+                      Id: generarGuid(),
+                      TurnoId: turno.Id,
+                      FechaOperativa: turno.FechaOperativa,
+                      FechaHoraRegistro: new Date().toISOString(),
+                      Concepto: nombreLimpio ? "Merma: " + nombreLimpio : "Merma",
+                      Monto: montoTrasladado
+                    });
+                  }
+                }
+
+                // CORTE DE CAJA
+                function obtenerFechaOperativa(fechaObj) {
+                  const f = new Date(fechaObj);
+                  if (f.getHours() < 6) {
+                    f.setDate(f.getDate() - 1);
+                  }
+                  return f.toISOString().slice(0, 10) + "T00:00:00";
+                }
+
+                function obtenerTurnoAbierto() {
+                  return (estado.Turnos || []).find(t => !t.FechaCierre);
+                }
+
+                function abrirTurnoInterno() {
+                  const existente = obtenerTurnoAbierto();
+                  if (existente) return existente;
+                  const ahora = new Date();
+                  const nuevo = {
+                    Id: generarGuid(),
+                    FechaApertura: ahora.toISOString(),
+                    FechaCierre: null,
+                    FechaOperativa: obtenerFechaOperativa(ahora)
+                  };
+                  estado.Turnos = estado.Turnos || [];
+                  estado.Turnos.unshift(nuevo);
+                  return nuevo;
+                }
+
+                function registrarGastoInterno(concepto, monto) {
+                  if (!monto || monto <= 0) return;
+                  const turno = obtenerTurnoAbierto() || abrirTurnoInterno();
+                  estado.Gastos = estado.Gastos || [];
+                  estado.Gastos.unshift({
+                    Id: generarGuid(),
+                    TurnoId: turno.Id,
+                    FechaOperativa: turno.FechaOperativa,
+                    FechaHoraRegistro: new Date().toISOString(),
+                    Concepto: (concepto || "Compra de insumos").trim(),
+                    Monto: monto
+                  });
+                }
+
+                window.toggleTurno = function () {
+                  const actual = obtenerTurnoAbierto();
+                  if (!actual) {
+                    abrirTurnoInterno();
+                    marcarCambioYSubir();
+                  } else {
+                    if (estado.Permisos?.PermitirCerrarTurno === false) {
+                      alert("El cierre de turno está desactivado en Admin.");
+                      return;
+                    }
+                    if (!confirm("¿Deseas cerrar el turno operativo actual y realizar el corte de caja?")) return;
+                    actual.FechaCierre = new Date().toISOString();
+                    marcarCambioYSubir();
+                  }
+                };
+
+                window.registrarGastoManual = function () {
+                  const concepto = prompt("Concepto o insumo comprado:");
+                  if (concepto === null) return;
+                  const montoStr = prompt("Monto del gasto ($):");
+                  if (montoStr === null) return;
+                  const monto = parseFloat(montoStr);
+                  if (isNaN(monto) || monto <= 0) {
+                    alert("Ingresa un monto válido mayor a 0.");
+                    return;
+                  }
+                  registrarGastoInterno(concepto, monto);
+                  marcarCambioYSubir();
+                };
+
+                window.cambiarPeriodo = function (per) {
+                  periodoActual = per;
+                  document.getElementById("filtroDia").classList.toggle("active", per === "Dia");
+                  document.getElementById("filtroSemanal").classList.toggle("active", per === "Semanal");
+                  document.getElementById("filtroMensual").classList.toggle("active", per === "Mensual");
+                  renderCorte();
+                };
+
+                window.cambiarSubTabCorte = function (tab) {
+                  subTabCorte = tab;
+                  document.getElementById("subTabFacturas").classList.toggle("active", tab === "Facturas");
+                  document.getElementById("subTabGastos").classList.toggle("active", tab === "Gastos");
+                  document.getElementById("panelFacturas").classList.toggle("hidden", tab !== "Facturas");
+                  document.getElementById("panelGastos").classList.toggle("hidden", tab !== "Gastos");
+                };
+
+                window.eliminarFactura = function (facturaId) {
+                  if (estado.Permisos?.PermitirEliminarFactura === false) {
+                    alert("La eliminación de facturas está desactivada en Admin.");
+                    return;
+                  }
+                  if (!confirm("¿Deseas eliminar esta factura? Se restará del total de ventas y los insumos volverán al inventario.")) return;
+                  const fac = (estado.Facturas || []).find(f => f.Id === facturaId);
+                  if (!fac) return;
+
+                  if (Array.isArray(fac.InsumosDescontados)) {
+                    fac.InsumosDescontados.forEach(ing => {
+                      const ins = (estado.Inventario || []).find(i => i.Id === ing.InsumoId);
+                      if (ins) {
+                        const cantDevuelta = Number(ing.Cantidad) || 0;
+                        const { costoUnitarioPromedio } = obtenerMetricasCostoActual(ins);
+                        ins.StockActual = (Number(ins.StockActual) || 0) + cantDevuelta;
+                        if (ins.EsCostoTotal !== false) {
+                          ins.CostoIngresado = (Number(ins.CostoIngresado) || 0) + (cantDevuelta * costoUnitarioPromedio);
+                        }
+                      }
+                    });
+                  }
+
+                  estado.Facturas = estado.Facturas.filter(f => f.Id !== facturaId);
+                  marcarCambioYSubir();
+                };
+
+                window.eliminarGasto = function (gastoId) {
+                  if (!confirm("¿Deseas eliminar este recibo?")) return;
+                  estado.Gastos = (estado.Gastos || []).filter(g => g.Id !== gastoId);
+                  marcarCambioYSubir();
+                };
+
+                function obtenerRangoPeriodo() {
+                  const turno = obtenerTurnoAbierto();
+                  const refStr = turno?.FechaOperativa || obtenerFechaOperativa(new Date());
+                  const refDate = new Date(refStr.slice(0, 10) + "T00:00:00");
+
+                  let inicio = new Date(refDate);
+                  let fin = new Date(refDate);
+
+                  if (periodoActual === "Semanal") {
+                    const diffLunes = (refDate.getDay() + 6) % 7;
+                    inicio.setDate(refDate.getDate() - diffLunes);
+                    fin = new Date(inicio);
+                    fin.setDate(inicio.getDate() + 6);
+                  } else if (periodoActual === "Mensual") {
+                    inicio = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+                    fin = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
+                  }
+
+                  return {
+                    inicioStr: inicio.toISOString().slice(0, 10),
+                    finStr: fin.toISOString().slice(0, 10),
+                    refStr: refStr.slice(0, 10),
+                    turno
+                  };
+                }
+
+                window.renderCorte = function () {
+                  const { inicioStr, finStr, refStr, turno } = obtenerRangoPeriodo();
+
+                  document.getElementById("lblEstadoTurno").textContent = turno
+                    ? "Turno activo"
+                    : "Sin turno abierto";
+                  document.getElementById("lblFechaOperativa").textContent = "Día operativo de referencia: " + refStr;
+                  document.getElementById("btnToggleTurno").textContent = turno ? "Cerrar Turno" : "Abrir Turno";
+                  document.getElementById("btnToggleTurno").className = turno ? "btn btn-danger" : "btn btn-success";
+
+                  const facturasPeriodo = (estado.Facturas || []).filter(f => {
+                    const fOp = (f.FechaOperativa || "").slice(0, 10);
+                    return fOp >= inicioStr && fOp <= finStr;
+                  });
+
+                  const gastosPeriodo = (estado.Gastos || []).filter(g => {
+                    const gOp = (g.FechaOperativa || "").slice(0, 10);
+                    return gOp >= inicioStr && gOp <= finStr;
+                  });
+
+                  const totalVentas = facturasPeriodo.reduce((acc, f) => acc + (Number(f.TotalCobrado) || 0), 0);
+                  const totalGastos = gastosPeriodo.reduce((acc, g) => acc + (Number(g.Monto) || 0), 0);
+                  const gananciaNeta = Math.round((totalVentas - totalGastos) * 100) / 100;
+
+                  document.getElementById("kpiVentas").textContent = formatearMoneda(totalVentas);
+                  document.getElementById("kpiGastos").textContent = formatearMoneda(totalGastos);
+                  const kpiGanEl = document.getElementById("kpiGanancia");
+                  kpiGanEl.textContent = formatearMoneda(gananciaNeta);
+                  kpiGanEl.style.color = gananciaNeta >= 0 ? "var(--success)" : "var(--danger)";
+
+                  const panelFac = document.getElementById("panelFacturas");
+                  if (facturasPeriodo.length === 0) {
+                    panelFac.innerHTML = `<div class="card-meta">No hay facturas en este período.</div>`;
+                  } else {
+                    panelFac.innerHTML = facturasPeriodo.map(f => `
+                      <div class="list-row">
+                        <div>
+                          <strong>${formatearMoneda(f.TotalCobrado)}</strong> • ${escaparHtml(f.MetodoPago || "Efectivo")}
+                          <div class="card-meta">${escaparHtml(f.ResumenProductos || "")}</div>
+                        </div>
+                        <button class="btn btn-danger" type="button" onclick="eliminarFactura('${f.Id}')">Eliminar</button>
+                      </div>
+                    `).join("");
+                  }
+
+                  const panelGas = document.getElementById("panelGastos");
+                  if (gastosPeriodo.length === 0) {
+                    panelGas.innerHTML = `<div class="card-meta">No hay recibos de compra o merma en este período.</div>`;
+                  } else {
+                    panelGas.innerHTML = gastosPeriodo.map(g => `
+                      <div class="list-row">
+                        <div>
+                          <strong>${escaparHtml(g.Concepto || "Gasto")}</strong> — ${formatearMoneda(g.Monto)}
+                          <div class="card-meta">${escaparHtml((g.FechaHoraRegistro || "").replace("T", " ").slice(0, 16))}</div>
+                        </div>
+                        <button class="btn btn-danger" type="button" onclick="eliminarGasto('${g.Id}')">Eliminar</button>
+                      </div>
+                    `).join("");
+                  }
+                };
+
+                function escaparHtml(str) {
+                  return String(str ?? "")
+                    .replaceAll("&", "&amp;")
+                    .replaceAll("<", "&lt;")
+                    .replaceAll(">", "&gt;")
+                    .replaceAll('"', "&quot;");
+                }
     </script>
 </body>
 </html>
