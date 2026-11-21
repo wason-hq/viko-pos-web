@@ -257,6 +257,29 @@
             border: 1px solid var(--primary);
         }
 
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background: rgba(22, 163, 74, 0.14);
+            color: var(--success);
+            border: 1px solid rgba(22, 163, 74, 0.35);
+        }
+
+        .role-worker {
+            background: rgba(234, 88, 12, 0.14);
+            color: var(--warning);
+            border: 1px solid rgba(234, 88, 12, 0.35);
+        }
+
         .sync-badge {
             display: inline-flex;
             align-items: center;
@@ -414,7 +437,7 @@
 
         .admin-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 16px;
         }
 
@@ -538,12 +561,12 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            padding: 11px 6px;
+            padding: 12px 8px;
             border-bottom: 1px solid var(--border);
         }
 
             .list-row > div {
-                flex: 1 1 200px;
+                flex: 1 1 240px;
                 min-width: 0;
             }
 
@@ -567,11 +590,39 @@
                 margin-bottom: 0;
             }
 
+        .terminal-perms-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .perm-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 8px;
+            background: var(--soft);
+            border: 1px solid var(--border);
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .code-input {
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-weight: 800;
+            font-size: 20px;
+            text-align: center;
+        }
+
         /* Modal */
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(9, 13, 22, 0.68);
+            background: rgba(9, 13, 22, 0.72);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             display: flex;
@@ -749,7 +800,7 @@
             <div class="login-badge">🛡️ Consola Admin • Nube</div>
             <div class="login-logo"><img src="viko_inicio.png" alt="Viko POS" /></div>
             <h1>Viko POS Admin</h1>
-            <p>Administración centralizada de <strong>Negocio y Rubro</strong>, <strong>Terminales y Permisos</strong>, <strong>Compras</strong>, <strong>Inventario</strong> y <strong>Corte de Caja</strong>.</p>
+            <p>Administración centralizada de <strong>Terminales y Permisos</strong>, <strong>Compras</strong>, <strong>Inventario</strong> y <strong>Corte de Caja</strong>.</p>
             <button id="btnGoogleLogin" class="btn-google" type="button">
                 <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
@@ -760,7 +811,35 @@
                 <span>Continuar con Google</span>
             </button>
             <div id="loginError" class="status-msg"></div>
-            <div class="login-footer-note">🔒 Acceso administrador vinculado a tu cuenta Gmail</div>
+            <div class="login-footer-note">🔒 Acceso administrador vinculado a tu cuenta Gmail + Código Web Admin</div>
+        </div>
+    </div>
+
+    <!-- MODAL BLOQUEANTE CODIGO WEB ADMIN -->
+    <div id="modalCodigoWeb" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <h3 style="margin-top:0;">🔐 Verificación CODIGO WEB ADMIN</h3>
+            <p class="card-meta" style="margin-top:0;">
+                Cuenta validada: <strong id="lblCodigoCuentaEmail"></strong>.<br />
+                Ingresa el <strong>CODIGO WEB ADMIN</strong> vigente de 12 horas que aparece en la pantalla de Inicio de la app Admin.
+            </p>
+
+            <div class="form-group">
+                <label for="txtCodigoWebIngreso">Código de acceso (6 caracteres)</label>
+                <input id="txtCodigoWebIngreso"
+                       class="input code-input"
+                       type="text"
+                       maxlength="8"
+                       placeholder="XXXXXX"
+                       autocomplete="off" />
+            </div>
+
+            <div id="codigoWebError" class="status-msg"></div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onclick="cancelarCodigoWeb()">Cerrar sesión</button>
+                <button class="btn btn-success" type="button" onclick="validarCodigoWebAdmin()">Validar y Entrar</button>
+            </div>
         </div>
     </div>
 
@@ -794,42 +873,10 @@
             <!-- SECCIÓN ADMIN -->
             <section id="secAdmin" class="hidden">
                 <div class="admin-grid">
-                    <!-- Negocio, Sucursal y Rubro -->
-                    <div class="card">
-                        <div>
-                            <h3 class="card-title">Negocio, Rubro y Sucursal</h3>
-                            <p class="card-meta">Define la identidad del negocio, el rubro operativo y la sucursal principal sincronizada en Firebase.</p>
-
-                            <div class="form-group">
-                                <label for="txtAdminNegocio">Nombre del negocio</label>
-                                <input id="txtAdminNegocio" class="input" type="text" placeholder="Ej: Viko POS / Parrilla & Rápida" />
-                            </div>
-
-                            <div class="form-group">
-                                <label for="selAdminRubro">Rubro del negocio</label>
-                                <select id="selAdminRubro" class="select">
-                                    <option value="Comida Rápida">Comida Rápida</option>
-                                    <option value="Restaurante / Parrilla">Restaurante / Parrilla</option>
-                                    <option value="Cafetería / Panadería">Cafetería / Panadería</option>
-                                    <option value="Tienda / Minimarket">Tienda / Minimarket</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="txtAdminSucursal">Sucursal activa</label>
-                                <input id="txtAdminSucursal" class="input" type="text" placeholder="Ej: Principal - Barranquilla" />
-                            </div>
-                        </div>
-
-                        <div class="card-actions">
-                            <button class="btn btn-success" type="button" onclick="guardarConfigAdmin()">Guardar Ajustes Admin</button>
-                        </div>
-                    </div>
-
                     <!-- Permisos y Seguridad Operativa -->
                     <div class="card">
                         <div>
-                            <h3 class="card-title">Permisos Operativos</h3>
+                            <h3 class="card-title">Permisos Operativos Globales</h3>
                             <p class="card-meta">Controla acciones sensibles disponibles en terminales y sesiones conectadas.</p>
 
                             <div class="perm-toggle">
@@ -871,11 +918,11 @@
                     </div>
                 </div>
 
-                <!-- Terminales / Dispositivos -->
+                <!-- Terminales / Dispositivos (Admin y Trabajadores) -->
                 <div class="list-box" style="margin-top: 16px;">
                     <div class="toolbar" style="margin-bottom: 10px;">
                         <div>
-                            <h3 class="card-title" style="margin: 0;">Terminales Registradas</h3>
+                            <h3 class="card-title" style="margin: 0;">Terminales Registradas (Admin y Trabajadores)</h3>
                             <div id="lblAdminResumenEstado" class="card-meta"></div>
                         </div>
                         <button class="btn" type="button" onclick="registrarTerminalActual()">+ Registrar Terminal Actual</button>
@@ -1095,6 +1142,7 @@
                 let currentUser = null;
                 let idTokenActual = null;
                 let userKeyActual = null;
+                let codigoWebValidadoEnSesion = false;
 
                 let estado = {
                   Uid: "",
@@ -1136,21 +1184,44 @@
 
                 let idMermaActual = null;
 
+                const PERMISOS_TERMINAL_KEYS = [
+                  { key: "PermitirEliminarFactura", label: "Eliminar facturas" },
+                  { key: "PermitirMerma", label: "Mermas" },
+                  { key: "PermitirCerrarTurno", label: "Cerrar turno" },
+                  { key: "PermitirEditarInventario", label: "Editar inventario" },
+                  { key: "PermitirVentas", label: "Ventas / Caja" }
+                ];
+
+                function normalizarPermisos(raw) {
+                  const p = raw || {};
+                  return {
+                    PermitirEliminarFactura: p.PermitirEliminarFactura !== false,
+                    PermitirMerma: p.PermitirMerma !== false,
+                    PermitirCerrarTurno: p.PermitirCerrarTurno !== false,
+                    PermitirEditarInventario: p.PermitirEditarInventario !== false,
+                    PermitirVentas: p.PermitirVentas !== false
+                  };
+                }
+
                 function normalizarEstado(remoto) {
                   const r = remoto || {};
+                  const terminales = Array.isArray(r.Terminales)
+                    ? r.Terminales.map(t => ({
+                        ...t,
+                        Rol: t?.Rol || (t?.EsTrabajador ? "Trabajador" : "Admin"),
+                        Activa: t?.Activa !== false,
+                        Permisos: normalizarPermisos(t?.Permisos || r.Permisos)
+                      }))
+                    : [];
+
                   return {
                     Uid: r.Uid || currentUser?.uid || "",
                     Email: r.Email || currentUser?.email || "",
                     NombreNegocio: r.NombreNegocio || "",
                     Rubro: r.Rubro || "Comida Rápida",
                     SucursalId: r.SucursalId || "Principal",
-                    Permisos: {
-                      PermitirEliminarFactura: r.Permisos?.PermitirEliminarFactura !== false,
-                      PermitirMerma: r.Permisos?.PermitirMerma !== false,
-                      PermitirCerrarTurno: r.Permisos?.PermitirCerrarTurno !== false,
-                      PermitirEditarInventario: r.Permisos?.PermitirEditarInventario !== false
-                    },
-                    Terminales: Array.isArray(r.Terminales) ? r.Terminales : [],
+                    Permisos: normalizarPermisos(r.Permisos),
+                    Terminales: terminales,
                     FechaActualizacion: r.FechaActualizacion || new Date().toISOString(),
                     Inventario: Array.isArray(r.Inventario) ? r.Inventario : [],
                     ProductosVenta: Array.isArray(r.ProductosVenta) ? r.ProductosVenta : [],
@@ -1209,6 +1280,13 @@
                     .replaceAll("#", "_")
                     .replaceAll("[", "_")
                     .replaceAll("]", "_");
+                }
+
+                async function sha256Hex16(texto) {
+                  const data = new TextEncoder().encode(texto);
+                  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+                  const hashArray = Array.from(new Uint8Array(hashBuffer));
+                  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
                 }
 
                 function obtenerIdDispositivoLocal() {
@@ -1270,6 +1348,84 @@
                   return { permitido: true, motivo: "" };
                 }
 
+                async function mostrarModalCodigoWeb(email) {
+                  codigoWebValidadoEnSesion = false;
+                  document.getElementById("loginView").classList.add("hidden");
+                  document.getElementById("appView").classList.add("hidden");
+                  document.getElementById("lblCodigoCuentaEmail").textContent = email;
+                  document.getElementById("txtCodigoWebIngreso").value = "";
+                  document.getElementById("codigoWebError").textContent = "";
+                  document.getElementById("modalCodigoWeb").classList.remove("hidden");
+                  setTimeout(() => document.getElementById("txtCodigoWebIngreso")?.focus(), 50);
+                }
+
+                window.cancelarCodigoWeb = async function () {
+                  document.getElementById("modalCodigoWeb").classList.add("hidden");
+                  await signOut(auth);
+                };
+
+                window.validarCodigoWebAdmin = async function () {
+                  const errEl = document.getElementById("codigoWebError");
+                  errEl.textContent = "";
+
+                  const ingresado = (document.getElementById("txtCodigoWebIngreso").value || "").trim().toUpperCase();
+                  if (!ingresado) {
+                    errEl.textContent = "Debes ingresar el CODIGO WEB ADMIN para continuar.";
+                    return;
+                  }
+
+                  if (!currentUser?.email) {
+                    errEl.textContent = "No hay sesión activa.";
+                    return;
+                  }
+
+                  try {
+                    const token = await currentUser.getIdToken(false);
+                    const claveCuenta = await sha256Hex16(currentUser.email.trim().toLowerCase());
+                    const authQuery = token ? `?auth=${encodeURIComponent(token)}` : "";
+                    const url = `${firebaseConfig.databaseURL}/codigosWebAdmin/${claveCuenta}.json${authQuery}`;
+                    const resp = await fetch(url);
+                    if (!resp.ok) {
+                      errEl.textContent = "No se pudo consultar CODIGO WEB ADMIN en Firebase.";
+                      return;
+                    }
+
+                    const data = await resp.json();
+                    const codigoRemoto = String(data?.Codigo || "").trim().toUpperCase();
+                    const activo = data?.Activo !== false;
+                    const expiraMs = data?.ExpiraEn ? Date.parse(data.ExpiraEn) : NaN;
+                    const noVencido = Number.isNaN(expiraMs) ? true : (expiraMs > Date.now());
+
+                    if (!codigoRemoto || !activo || ingresado !== codigoRemoto) {
+                      errEl.textContent = "Código incorrecto o no registrado para esta cuenta Admin.";
+                      return;
+                    }
+
+                    if (!noVencido) {
+                      errEl.textContent = "El código de 12 horas ha expirado. Actualiza o abre Inicio en la app Admin.";
+                      return;
+                    }
+
+                    codigoWebValidadoEnSesion = true;
+                    document.getElementById("modalCodigoWeb").classList.add("hidden");
+                    document.getElementById("loginError").textContent = "";
+                    document.getElementById("appView").classList.remove("hidden");
+                    document.getElementById("lblUsuarioEmail").textContent = currentUser.email;
+
+                    await descargarRemoto(true);
+                    renderTodo();
+                  } catch (e) {
+                    errEl.textContent = "Error al validar el código con Firebase.";
+                  }
+                };
+
+                document.getElementById("txtCodigoWebIngreso").addEventListener("keydown", (e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    window.validarCodigoWebAdmin();
+                  }
+                });
+
                 function generarGuid() {
                   if (crypto && crypto.randomUUID) return crypto.randomUUID();
                   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
@@ -1324,6 +1480,7 @@
                 });
 
                 window.cerrarSesion = async function () {
+                  codigoWebValidadoEnSesion = false;
                   await signOut(auth);
                 };
 
@@ -1332,7 +1489,9 @@
                     currentUser = null;
                     idTokenActual = null;
                     userKeyActual = null;
+                    codigoWebValidadoEnSesion = false;
                     cargarModoOscuroUsuario();
+                    document.getElementById("modalCodigoWeb").classList.add("hidden");
                     document.getElementById("loginView").classList.remove("hidden");
                     document.getElementById("appView").classList.add("hidden");
                     return;
@@ -1351,7 +1510,13 @@
                   cargarModoOscuroUsuario();
                   idTokenActual = token;
 
+                  if (!codigoWebValidadoEnSesion) {
+                    await mostrarModalCodigoWeb(user.email);
+                    return;
+                  }
+
                   document.getElementById("loginError").textContent = "";
+                  document.getElementById("modalCodigoWeb").classList.add("hidden");
                   document.getElementById("loginView").classList.add("hidden");
                   document.getElementById("appView").classList.remove("hidden");
                   document.getElementById("lblUsuarioEmail").textContent = user.email;
@@ -1361,12 +1526,12 @@
                 });
 
                 setInterval(async () => {
-                  if (!currentUser || sincronizando || hayCambiosPendientes) return;
+                  if (!currentUser || !codigoWebValidadoEnSesion || sincronizando || hayCambiosPendientes) return;
                   await descargarRemoto(false);
                 }, 5000);
 
                 window.sincronizarManual = async function () {
-                  if (!currentUser) return;
+                  if (!currentUser || !codigoWebValidadoEnSesion) return;
                   if (hayCambiosPendientes) {
                     await subirCambios();
                   }
@@ -1380,7 +1545,7 @@
                 }
 
                 async function descargarRemoto(forzarRender) {
-                  if (!currentUser || !userKeyActual || sincronizando || hayCambiosPendientes) return;
+                  if (!currentUser || !userKeyActual || !codigoWebValidadoEnSesion || sincronizando || hayCambiosPendientes) return;
                   sincronizando = true;
                   try {
                     const token = await refrescarTokenSiNecesario();
@@ -1394,16 +1559,55 @@
                     }
 
                     const remoto = await resp.json();
-                    if (!remoto) {
+
+                    let terminalesFusionadas = Array.isArray(remoto?.Terminales) ? remoto.Terminales : [];
+                    const dispResp = await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKeyActual}.json?auth=${encodeURIComponent(token)}`);
+                    if (dispResp.ok) {
+                      const dispData = await dispResp.json();
+                      if (dispData && typeof dispData === "object") {
+                        for (const [k, val] of Object.entries(dispData)) {
+                          if (typeof val === "object" && val !== null) {
+                            const idTerm = val.id || k;
+                            const idx = terminalesFusionadas.findIndex(x => x.Id === idTerm);
+                            const rolDetectado = val.rol || val.Rol || (val.esTrabajador || val.EsTrabajador ? "Trabajador" : "Admin");
+                            const permDetectados = normalizarPermisos(val.permisos || val.Permisos || remoto?.Permisos);
+                            if (idx >= 0) {
+                              terminalesFusionadas[idx] = {
+                                ...terminalesFusionadas[idx],
+                                Nombre: val.nombre || val.Nombre || terminalesFusionadas[idx].Nombre || idTerm,
+                                Rol: rolDetectado,
+                                Activa: val.activo !== undefined ? val.activo !== false : (val.Activa !== false),
+                                Permisos: normalizarPermisos(terminalesFusionadas[idx].Permisos || permDetectados)
+                              };
+                            } else {
+                              terminalesFusionadas.push({
+                                Id: idTerm,
+                                Nombre: val.nombre || val.Nombre || `Dispositivo ${idTerm}`,
+                                Rol: rolDetectado,
+                                SucursalId: val.sucursalId || remoto?.SucursalId || "Principal",
+                                Activa: val.activo !== undefined ? val.activo !== false : (val.Activa !== false),
+                                Permisos: permDetectados,
+                                FechaRegistro: val.fechaRegistro || new Date().toISOString()
+                              });
+                            }
+                          }
+                        }
+                      }
+                    }
+
+                    if (!remoto && terminalesFusionadas.length === 0) {
                       setSyncStatus("Sin datos previos en nube • Listo");
                       return;
                     }
 
-                    const fechaRemota = Date.parse(remoto.FechaActualizacion || 0) || 0;
+                    const fechaRemota = Date.parse(remoto?.FechaActualizacion || 0) || 0;
                     const fechaLocal = Date.parse(estado.FechaActualizacion || 0) || 0;
 
                     if (fechaRemota > fechaLocal || forzarRender) {
-                      estado = normalizarEstado(remoto);
+                      estado = normalizarEstado({
+                        ...(remoto || estado),
+                        Terminales: terminalesFusionadas
+                      });
                       actualizarEncabezadoAdmin();
                       renderTodo();
                     }
@@ -1427,6 +1631,33 @@
                   subirCambios();
                 }
 
+                async function sincronizarDispositivosAutorizados() {
+                  if (!currentUser || !userKeyActual) return;
+                  try {
+                    const token = await currentUser.getIdToken(false);
+                    const mapaDisp = {};
+                    for (const t of (estado.Terminales || [])) {
+                      if (!t.Id) continue;
+                      const esTrab = String(t.Rol || "").toLowerCase().includes("trab");
+                      mapaDisp[t.Id] = {
+                        id: t.Id,
+                        nombre: t.Nombre || t.Id,
+                        rol: esTrab ? "Trabajador" : "Admin",
+                        esTrabajador: esTrab,
+                        activo: t.Activa !== false,
+                        permisos: normalizarPermisos(t.Permisos)
+                      };
+                    }
+                    await fetch(`${firebaseConfig.databaseURL}/dispositivos_autorizados/${userKeyActual}.json?auth=${encodeURIComponent(token)}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(mapaDisp)
+                    });
+                  } catch (e) {
+                    // Ignora error secundario
+                  }
+                }
+
                 async function subirCambios() {
                   if (!currentUser || !userKeyActual) return;
                   sincronizando = true;
@@ -1440,6 +1671,7 @@
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(estado)
                     });
+                    await sincronizarDispositivosAutorizados();
                     if (resp.ok) {
                       hayCambiosPendientes = false;
                       const hora = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -1486,9 +1718,6 @@
                 // ADMIN
                 window.renderAdmin = function () {
                   estado = normalizarEstado(estado);
-                  document.getElementById("txtAdminNegocio").value = estado.NombreNegocio || "";
-                  document.getElementById("selAdminRubro").value = estado.Rubro || "Comida Rápida";
-                  document.getElementById("txtAdminSucursal").value = estado.SucursalId || "Principal";
 
                   document.getElementById("chkPermEliminarFactura").checked = estado.Permisos.PermitirEliminarFactura !== false;
                   document.getElementById("chkPermMerma").checked = estado.Permisos.PermitirMerma !== false;
@@ -1498,8 +1727,11 @@
                   const totalInsumos = (estado.Inventario || []).length;
                   const totalFacturas = (estado.Facturas || []).length;
                   const totalTerminales = (estado.Terminales || []).length;
+                  const cantAdmin = (estado.Terminales || []).filter(t => !String(t.Rol || "").toLowerCase().includes("trab")).length;
+                  const cantTrab = totalTerminales - cantAdmin;
+
                   document.getElementById("lblAdminResumenEstado").textContent =
-                    `Rubro: ${estado.Rubro} • Sucursal: ${estado.SucursalId} • Insumos: ${totalInsumos} • Facturas: ${totalFacturas} • Terminales: ${totalTerminales}`;
+                    `Admin: ${cantAdmin} • Trabajadores: ${cantTrab} • Total Terminales: ${totalTerminales} • Insumos: ${totalInsumos} • Facturas: ${totalFacturas}`;
 
                   const contTerm = document.getElementById("listaTerminalesAdmin");
                   if (!estado.Terminales.length) {
@@ -1509,35 +1741,60 @@
 
                   contTerm.innerHTML = estado.Terminales.map(t => {
                     const activa = t.Activa !== false;
+                    const esTrabajador = String(t.Rol || "").toLowerCase().includes("trab");
+                    const rolTexto = esTrabajador ? "Trabajador" : "Admin";
+                    const perms = normalizarPermisos(t.Permisos || estado.Permisos);
+
+                    const checksHtml = PERMISOS_TERMINAL_KEYS.map(p => `
+                      <label class="perm-chip">
+                        <input type="checkbox"
+                               ${perms[p.key] !== false ? "checked" : ""}
+                               onchange="actualizarPermisoTerminal('${escaparHtml(t.Id)}', '${p.key}', this.checked)" />
+                        <span>${escaparHtml(p.label)}</span>
+                      </label>
+                    `).join("");
+
                     return `
                       <div class="list-row">
                         <div>
-                          <strong>${escaparHtml(t.Nombre || "Terminal Web")}</strong> • <span class="card-meta">ID: ${escaparHtml(t.Id || "")}</span>
+                          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <strong>${escaparHtml(t.Nombre || "Terminal")}</strong>
+                            <span class="role-badge ${esTrabajador ? "role-worker" : "role-admin"}">${rolTexto}</span>
+                            <span class="card-meta">ID: ${escaparHtml(t.Id || "")}</span>
+                          </div>
                           <div class="card-meta">Sucursal: ${escaparHtml(t.SucursalId || estado.SucursalId)} • Estado: <strong>${activa ? "Activa" : "Desactivada"}</strong></div>
+                          <div class="terminal-perms-grid">${checksHtml}</div>
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                          <button class="btn ${activa ? "btn-warning" : "btn-success"}" type="button" onclick="toggleTerminalAdmin('${t.Id}')">${activa ? "Desactivar" : "Activar"}</button>
-                          <button class="btn btn-danger" type="button" onclick="eliminarTerminalAdmin('${t.Id}')">Quitar</button>
+                          <button class="btn btn-secondary" type="button" onclick="cambiarRolTerminalAdmin('${escaparHtml(t.Id)}')">Rol: ${rolTexto}</button>
+                          <button class="btn ${activa ? "btn-warning" : "btn-success"}" type="button" onclick="toggleTerminalAdmin('${escaparHtml(t.Id)}')">${activa ? "Desactivar" : "Activar"}</button>
+                          <button class="btn btn-danger" type="button" onclick="eliminarTerminalAdmin('${escaparHtml(t.Id)}')">Quitar</button>
                         </div>
                       </div>
                     `;
                   }).join("");
                 };
 
-                window.guardarConfigAdmin = function () {
-                  const nombre = (document.getElementById("txtAdminNegocio").value || "").trim();
-                  const rubro = document.getElementById("selAdminRubro").value || "Comida Rápida";
-                  const sucursal = (document.getElementById("txtAdminSucursal").value || "").trim() || "Principal";
-
-                  estado.NombreNegocio = nombre;
-                  estado.Rubro = rubro;
-                  estado.SucursalId = sucursal;
+                window.actualizarPermisoAdmin = function (clave, valor) {
+                  estado.Permisos = normalizarPermisos(estado.Permisos);
+                  estado.Permisos[clave] = Boolean(valor);
                   marcarCambioYSubir();
                 };
 
-                window.actualizarPermisoAdmin = function (clave, valor) {
-                  estado.Permisos = estado.Permisos || {};
-                  estado.Permisos[clave] = Boolean(valor);
+                window.actualizarPermisoTerminal = function (id, clavePermiso, valor) {
+                  const term = (estado.Terminales || []).find(t => t.Id === id);
+                  if (!term) return;
+                  term.Permisos = normalizarPermisos(term.Permisos || estado.Permisos);
+                  term.Permisos[clavePermiso] = Boolean(valor);
+                  marcarCambioYSubir();
+                };
+
+                window.cambiarRolTerminalAdmin = function (id) {
+                  const term = (estado.Terminales || []).find(t => t.Id === id);
+                  if (!term) return;
+                  const esTrab = String(term.Rol || "").toLowerCase().includes("trab");
+                  term.Rol = esTrab ? "Admin" : "Trabajador";
+                  term.EsTrabajador = !esTrab;
                   marcarCambioYSubir();
                 };
 
@@ -1546,12 +1803,20 @@
                   const nombre = prompt("Nombre de esta terminal:", nombreSugerido);
                   if (nombre === null) return;
 
+                  const rolInput = prompt("Rol de la terminal (Admin o Trabajador):", "Admin");
+                  if (rolInput === null) return;
+                  const rolNormalizado = rolInput.trim().toLowerCase().startsWith("trab") ? "Trabajador" : "Admin";
+
+                  const devLocal = obtenerIdDispositivoLocal() || generarGuid().slice(0, 8).toUpperCase();
                   estado.Terminales = estado.Terminales || [];
                   estado.Terminales.unshift({
-                    Id: generarGuid().slice(0, 8).toUpperCase(),
+                    Id: devLocal,
                     Nombre: (nombre || nombreSugerido).trim(),
+                    Rol: rolNormalizado,
+                    EsTrabajador: rolNormalizado === "Trabajador",
                     SucursalId: estado.SucursalId || "Principal",
                     Activa: true,
+                    Permisos: normalizarPermisos(estado.Permisos),
                     FechaRegistro: new Date().toISOString()
                   });
                   marcarCambioYSubir();
